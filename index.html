@@ -9,16 +9,22 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#141414;
-    --bg-raised:#1c1c1c;
-    --line:#2c2c2a;
+    --bg:#080808;
+    --bg-raised:#141414;
+    --line:#232323;
     --text:#f2efe9;
     --text-dim:#8a8880;
-    --amber:#4ade80;
-    --amber-dim:#276b45;
-    --pink:#ff3d9a;
-    --green:#4ade80;
-    --red:#ef4444;
+    --amber:#05dc7f;        /* primary: main buttons */
+    --amber-dim:#03613a;
+    --pink:#9945ff;         /* accent: purple, smaller buttons/text */
+    --orange:#ff631b;       /* accent: orange, smaller buttons/text */
+    --green:#05dc7f;
+    --red:#e0116f;          /* danger/stop only */
+    --grad-1:#05dc7f;
+    --grad-2:#00664e;
+    --grad-3:#152e2b;
+    --grad-4:#080808;
+    --grad-5:#19188c;
     --mono:'IBM Plex Mono', monospace;
     --sans:'Inter', sans-serif;
   }
@@ -32,8 +38,81 @@
     display:flex;
     flex-direction:column;
     -webkit-font-smoothing:antialiased;
+    position:relative;
   }
   a{color:inherit;}
+
+  /* ---------- Animated fluid gradient background (running state) ---------- */
+  .bg-gradient{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    pointer-events:none;
+    background:var(--grad-4);
+    overflow:hidden;
+  }
+
+  .bg-gradient .blob{
+    position:absolute;
+    width:75vmax;
+    height:75vmax;
+    border-radius:50%;
+    mix-blend-mode:screen;
+    filter:blur(40px);
+    opacity:0;
+    transition:opacity 1.3s ease;
+    will-change:transform;
+  }
+  body.is-running .bg-gradient .blob{ opacity:0.85; }
+
+  .blob-1{
+    background:radial-gradient(circle at center, var(--grad-1), transparent 70%);
+    top:-20%; left:-15%;
+    animation:drift1 26s ease-in-out infinite;
+  }
+  .blob-2{
+    background:radial-gradient(circle at center, var(--grad-5), transparent 70%);
+    top:30%; left:40%;
+    animation:drift2 34s ease-in-out infinite;
+  }
+  .blob-3{
+    background:radial-gradient(circle at center, var(--grad-2), transparent 70%);
+    top:55%; left:-10%;
+    animation:drift3 30s ease-in-out infinite;
+  }
+  .blob-4{
+    background:radial-gradient(circle at center, var(--grad-3), transparent 72%);
+    top:5%; left:30%;
+    animation:drift4 22s ease-in-out infinite;
+  }
+
+  @keyframes drift1{
+    0%   { transform:translate(0%, 0%) scale(1); }
+    33%  { transform:translate(18%, 22%) scale(1.15); }
+    66%  { transform:translate(-8%, 15%) scale(0.9); }
+    100% { transform:translate(0%, 0%) scale(1); }
+  }
+  @keyframes drift2{
+    0%   { transform:translate(0%, 0%) scale(1); }
+    40%  { transform:translate(-22%, -14%) scale(0.85); }
+    70%  { transform:translate(-10%, 20%) scale(1.2); }
+    100% { transform:translate(0%, 0%) scale(1); }
+  }
+  @keyframes drift3{
+    0%   { transform:translate(0%, 0%) scale(1); }
+    30%  { transform:translate(15%, -18%) scale(1.1); }
+    65%  { transform:translate(25%, 8%) scale(0.95); }
+    100% { transform:translate(0%, 0%) scale(1); }
+  }
+  @keyframes drift4{
+    0%   { transform:translate(0%, 0%) scale(1); }
+    50%  { transform:translate(-16%, 24%) scale(1.2); }
+    100% { transform:translate(0%, 0%) scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .bg-gradient .blob{ animation:none !important; }
+  }
 
   .wrap{
     flex:1;
@@ -43,6 +122,8 @@
     justify-content:center;
     padding:32px 20px;
     width:100%;
+    position:relative;
+    z-index:1;
   }
 
   /* ---------- Top-left brand mark ---------- */
@@ -63,7 +144,7 @@
     background:var(--text-dim);
     transition:background .3s;
   }
-  .brand .dot.running{ background:var(--pink); box-shadow:0 0 8px var(--pink); animation:pulse 1.6s ease-in-out infinite; }
+  .brand .dot.running{ background:var(--orange); box-shadow:0 0 8px var(--orange); animation:pulse 1.6s ease-in-out infinite; }
   .brand .dot.saved{ background:var(--green); box-shadow:0 0 8px var(--green); }
   @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
 
@@ -142,7 +223,7 @@
   button:active{ transform:scale(0.97); }
   .btn-primary{
     background:var(--amber);
-    color:#1a1200;
+    color:#1a0500;
     width:100%;
   }
   .btn-primary:hover{ opacity:0.92; }
@@ -198,7 +279,7 @@
     align-items:baseline;
   }
   .clockface .colon{ transition:opacity .1s; }
-  .clockface.running .colon{ animation:blink 1s steps(1) infinite; color:var(--pink); }
+  .clockface.running .colon{ animation:blink 1s steps(1) infinite; color:var(--orange); }
   @keyframes blink{ 50%{ opacity:0.15; } }
   .clockface.idle{ color:var(--text-dim); }
 
@@ -571,6 +652,8 @@
     font-family:var(--mono);
     font-size:11px;
     color:var(--text-dim);
+    position:relative;
+    z-index:1;
   }
 
   @media (max-width:400px){
@@ -582,6 +665,13 @@
 </style>
 </head>
 <body>
+
+<div class="bg-gradient" id="bgGradient" aria-hidden="true">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="blob blob-4"></div>
+</div>
 
 <div class="brand"><span class="dot" id="statusDot"></span><span id="brandText">tap timer</span></div>
 <a class="handle-link" id="handleLink" href="#" style="display:none;"></a>
@@ -754,6 +844,7 @@ function setURLHandle(handle){
 function setStatusDot(state){
   const dot = document.getElementById('statusDot');
   dot.className = 'dot' + (state ? ' ' + state : '');
+  document.body.classList.toggle('is-running', state === 'running');
 }
 
 /* ============================================================
