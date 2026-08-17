@@ -35,6 +35,17 @@
   body.is-running{
     --line:#8a8880;
   }
+
+  /* Difference-blend variant: strokes/dim text that sit directly over
+     the gradient (not inside an opaque card) invert against whatever
+     gradient color is beneath them. Difference blend alone isn't a
+     full guarantee — it can under-perform where the foreground and
+     background luminance happen to be close (notably the bright
+     green gradient stop) — so a soft dark drop-shadow rides along as
+     a fallback layer of contrast underneath the blend. */
+  .invert-on-gradient{
+    mix-blend-mode:difference;
+  }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{height:100%;}
   body{
@@ -325,6 +336,13 @@
     border-radius:20px;
   }
   .utility-row button:hover{ border-color:var(--pink); color:var(--pink); }
+  body.is-running .utility-row button{
+    mix-blend-mode:difference;
+    border-color:#ffffff;
+    color:#ffffff;
+    text-shadow:0 1px 3px rgba(0,0,0,0.6);
+    box-shadow:0 0 0 1px rgba(0,0,0,0.35) inset;
+  }
 
   /* ---------- Manual entry modal ---------- */
   .modal-backdrop{
@@ -482,6 +500,13 @@
     border-color:var(--amber);
     color:#04150c;
     font-weight:600;
+  }
+  body.is-running .project-tab:not(.active){
+    mix-blend-mode:difference;
+    border-color:#ffffff;
+    color:#ffffff;
+    text-shadow:0 1px 3px rgba(0,0,0,0.6);
+    box-shadow:0 0 0 1px rgba(0,0,0,0.35) inset;
   }
 
   .log-total-display{
