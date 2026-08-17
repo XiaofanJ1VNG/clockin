@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Tap Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#141414;
+    --bg-raised:#1c1c1c;
+    --line:#2c2c2a;
+    --text:#f2efe9;
+    --text-dim:#8a8880;
+    --amber:#ff8a3d;
+    --amber-dim:#7a4a26;
+    --green:#4ade80;
+    --red:#ef4444;
+    --mono:'IBM Plex Mono', monospace;
+    --sans:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+
+  .wrap{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:32px 20px;
+    width:100%;
+  }
+
+  /* ---------- Top-left brand mark ---------- */
+  .brand{
+    position:fixed;
+    top:20px; left:20px;
+    font-family:var(--mono);
+    font-size:13px;
+    letter-spacing:0.04em;
+    color:var(--text-dim);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    z-index:10;
+  }
+  .brand .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--text-dim);
+    transition:background .3s;
+  }
+  .brand .dot.running{ background:var(--amber); box-shadow:0 0 8px var(--amber); animation:pulse 1.6s ease-in-out infinite; }
+  .brand .dot.saved{ background:var(--green); box-shadow:0 0 8px var(--green); }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  .handle-link{
+    position:fixed;
+    top:20px; right:20px;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--text-dim);
+    text-decoration:none;
+    border:1px solid var(--line);
+    padding:6px 10px;
+    border-radius:20px;
+    z-index:10;
+  }
+  .handle-link:hover{ border-color:var(--text-dim); color:var(--text); }
+
+  /* ---------- Onboarding (no handle yet) ---------- */
+  .onboard{
+    max-width:440px;
+    width:100%;
+    text-align:center;
+  }
+  .onboard h1{
+    font-family:var(--mono);
+    font-size:28px;
+    font-weight:600;
+    line-height:1.3;
+    margin-bottom:14px;
+    letter-spacing:-0.01em;
+  }
+  .onboard p{
+    color:var(--text-dim);
+    font-size:15px;
+    line-height:1.6;
+    margin-bottom:28px;
+  }
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    text-align:left;
+    margin-bottom:16px;
+  }
+  .field label{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--text-dim);
+  }
+  input[type=text]{
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:16px;
+    padding:14px 16px;
+    border-radius:8px;
+    outline:none;
+    width:100%;
+    transition:border-color .2s;
+  }
+  input[type=text]:focus{ border-color:var(--amber); }
+  .hint{ font-size:12.5px; color:var(--text-dim); margin-top:6px; }
+
+  button{
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:15px;
+    border:none;
+    border-radius:8px;
+    padding:14px 20px;
+    cursor:pointer;
+    transition:transform .1s ease, opacity .2s ease, background .2s ease;
+  }
+  button:active{ transform:scale(0.97); }
+  .btn-primary{
+    background:var(--amber);
+    color:#1a1200;
+    width:100%;
+  }
+  .btn-primary:hover{ opacity:0.92; }
+  .btn-primary:disabled{ opacity:0.4; cursor:not-allowed; }
+  .btn-ghost{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--text);
+  }
+  .btn-ghost:hover{ border-color:var(--text-dim); }
+  .btn-stop{
+    background:var(--red);
+    color:#2a0a0a;
+  }
+  .btn-danger-text{
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    font-size:13px;
+    text-decoration:underline;
+    padding:4px;
+  }
+
+  /* ---------- Main tracker ---------- */
+  .tracker{
+    width:100%;
+    max-width:480px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:36px;
+  }
+  .project-tag{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .project-tag .name{ color:var(--text); }
+
+  .clockface{
+    font-family:var(--mono);
+    font-weight:700;
+    font-size:clamp(48px, 14vw, 96px);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:0.01em;
+    line-height:1;
+    display:flex;
+    align-items:baseline;
+  }
+  .clockface .colon{ transition:opacity .1s; }
+  .clockface.running .colon{ animation:blink 1s steps(1) infinite; color:var(--amber); }
+  @keyframes blink{ 50%{ opacity:0.15; } }
+  .clockface.idle{ color:var(--text-dim); }
+
+  .status-line{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--text-dim);
+    min-height:18px;
+    text-align:center;
+  }
+
+  .main-action{
+    width:100%;
+    max-width:280px;
+  }
+  .main-action button{
+    width:100%;
+    font-size:17px;
+    padding:18px;
+  }
+
+  /* ---------- Assign panel ---------- */
+  .assign-panel{
+    width:100%;
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:24px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .assign-panel .elapsed-summary{
+    font-family:var(--mono);
+    font-size:22px;
+    text-align:center;
+    color:var(--green);
+    padding-bottom:4px;
+  }
+  select{
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:15px;
+    padding:12px 14px;
+    border-radius:8px;
+    outline:none;
+    width:100%;
+  }
+  select:focus{ border-color:var(--amber); }
+  .new-project-row{
+    display:flex;
+    gap:8px;
+  }
+  .new-project-row input{ flex:1; }
+  .new-project-row button{
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:0 16px;
+    font-size:14px;
+    white-space:nowrap;
+  }
+  .new-project-row button:hover{ border-color:var(--amber); color:var(--amber); }
+
+  /* ---------- Log ---------- */
+  .log{
+    width:100%;
+    max-width:480px;
+    margin-top:8px;
+  }
+  .log-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:12px;
+  }
+  .log-header h2{
+    font-family:var(--mono);
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--text-dim);
+  }
+  .log-total{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--text);
+  }
+  .log-entry{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    padding:12px 0;
+    border-bottom:1px solid var(--line);
+    font-size:14px;
+  }
+  .log-entry:last-child{ border-bottom:none; }
+  .log-entry .le-project{ color:var(--text); }
+  .log-entry .le-date{ color:var(--text-dim); font-size:12px; margin-top:2px; }
+  .log-entry .le-times{
+    font-family:var(--mono);
+    color:var(--text-dim);
+    font-size:11.5px;
+    margin-top:3px;
+    letter-spacing:0.01em;
+  }
+  .le-right{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:6px;
+    flex-shrink:0;
+  }
+  .log-entry .le-dur{ font-family:var(--mono); color:var(--amber); }
+  .le-actions{
+    display:flex;
+    gap:10px;
+  }
+  .le-actions button{
+    background:none;
+    border:none;
+    padding:0;
+    font-family:var(--sans);
+    font-size:12px;
+    color:var(--text-dim);
+    text-decoration:underline;
+    cursor:pointer;
+  }
+  .le-actions button:hover{ color:var(--text); }
+  .le-actions .le-delete:hover{ color:var(--red); }
+  .log-empty{
+    color:var(--text-dim);
+    font-size:13.5px;
+    text-align:center;
+    padding:24px 0;
+  }
+
+  /* ---------- Inline edit row ---------- */
+  .le-edit{
+    width:100%;
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px;
+    margin:10px 0;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .le-edit-row{
+    display:flex;
+    gap:10px;
+  }
+  .le-edit-field{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .le-edit-field label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--text-dim);
+  }
+  .le-edit input[type=date],
+  .le-edit input[type=time]{
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:14px;
+    padding:9px 10px;
+    border-radius:6px;
+    outline:none;
+    width:100%;
+  }
+  .le-edit input:focus{ border-color:var(--amber); }
+  .le-edit-actions{
+    display:flex;
+    gap:8px;
+    justify-content:flex-end;
+  }
+  .le-edit-actions button{
+    font-size:13px;
+    padding:9px 16px;
+  }
+  .le-edit-error{
+    font-size:12px;
+    color:var(--red);
+  }
+
+  /* ---------- Export panel ---------- */
+  .export-panel{
+    width:100%;
+    max-width:480px;
+    margin-top:28px;
+    padding-top:20px;
+    border-top:1px solid var(--line);
+  }
+  .export-panel h2{
+    font-family:var(--mono);
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--text-dim);
+    margin-bottom:12px;
+  }
+  .export-row{
+    display:flex;
+    gap:8px;
+  }
+  .export-row select{ flex:1; }
+  .export-row button{
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-size:14px;
+    padding:0 18px;
+    white-space:nowrap;
+  }
+  .export-row button:hover{ border-color:var(--amber); color:var(--amber); }
+
+  .setup-note{
+    max-width:480px;
+    width:100%;
+    background:var(--bg-raised);
+    border:1px dashed var(--line);
+    border-radius:10px;
+    padding:16px 18px;
+    font-size:13px;
+    color:var(--text-dim);
+    line-height:1.6;
+    margin-top:24px;
+  }
+  .setup-note code{
+    font-family:var(--mono);
+    background:var(--bg);
+    padding:1px 6px;
+    border-radius:4px;
+    color:var(--amber);
+  }
+
+  footer{
+    text-align:center;
+    padding:20px;
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--text-dim);
+  }
+
+  @media (max-width:400px){
+    .brand{ font-size:11px; }
+    .handle-link{ font-size:11px; padding:5px 9px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="brand"><span class="dot" id="statusDot"></span><span id="brandText">tap timer</span></div>
+<a class="handle-link" id="handleLink" href="#" style="display:none;"></a>
+
+<div class="wrap" id="app"></div>
+
+<footer>built for taps, not for typing</footer>
+
+<script>
+/* ============================================================
+   Local store — this is the only storage layer. Everything lives
+   in this browser's localStorage, keyed by handle. No server,
+   no accounts, no network calls. Works great as long as taps
+   always open in the same browser on the same device.
+   ============================================================ */
+const LocalStore = {
+  key(handle){ return `tap-timer:${handle}`; },
+  load(handle){
+    try { return JSON.parse(localStorage.getItem(this.key(handle))) || null; }
+    catch { return null; }
+  },
+  save(handle, data){
+    localStorage.setItem(this.key(handle), JSON.stringify(data));
+  }
+};
+
+/* ============================================================
+   Data layer
+   Shape per handle:
+   {
+     display_name: string,
+     projects: [{id, name}],
+     entries: [{id, project_id, started_at, ended_at, duration_sec}],
+     running: {started_at, project_id|null} | null
+   }
+   ============================================================ */
+const DEFAULT_DATA = () => ({ display_name: "", projects: [], entries: [], running: null });
+
+/* ============================================================
+   CONFIG — JSONBin.io settings.
+   Create a free bin at jsonbin.io, put {} as its initial content,
+   then paste your Bin ID and X-Master-Key below.
+   ============================================================ */
+const JSONBIN_BIN_ID = "YOUR_BIN_ID";
+const JSONBIN_MASTER_KEY = "YOUR_MASTER_KEY";
+const JSONBIN_READY = JSONBIN_BIN_ID !== "YOUR_BIN_ID" && JSONBIN_MASTER_KEY !== "YOUR_MASTER_KEY";
+const JSONBIN_BASE = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+
+async function jsonbinReadAll(){
+  const res = await fetch(`${JSONBIN_BASE}/latest`, {
+    headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+  });
+  if (!res.ok) throw new Error(`JSONBin read failed: ${res.status}`);
+  const json = await res.json();
+  return json.record || {};
+}
+
+async function jsonbinWriteAll(allData){
+  const res = await fetch(JSONBIN_BASE, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JSONBIN_MASTER_KEY
+    },
+    body: JSON.stringify(allData)
+  });
+  if (!res.ok) throw new Error(`JSONBin write failed: ${res.status}`);
+}
+
+async function fetchData(handle){
+  // Always warm the local cache first so the UI can render instantly.
+  const cached = LocalStore.load(handle);
+  if (!JSONBIN_READY) return cached || DEFAULT_DATA();
+
+  try {
+    const allData = await jsonbinReadAll();
+    const remote = allData[handle];
+    if (remote){
+      LocalStore.save(handle, remote); // keep local cache fresh
+      return remote;
+    }
+    return cached || DEFAULT_DATA();
+  } catch (e){
+    console.warn('Sync unavailable, using local copy:', e);
+    return cached || DEFAULT_DATA();
+  }
+}
+
+async function saveData(handle, data){
+  LocalStore.save(handle, data); // instant local cache, always happens
+  if (!JSONBIN_READY) return;
+
+  try {
+    // Re-fetch the whole bin right before writing, to minimize the chance
+    // of clobbering another device's save that landed in between.
+    const allData = await jsonbinReadAll().catch(() => ({}));
+    allData[handle] = data;
+    await jsonbinWriteAll(allData);
+  } catch (e){
+    console.warn('Sync save failed, change is saved locally only:', e);
+  }
+}
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+function getHandleFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  return (params.get('u') || '').trim();
+}
+function randomHandle(){
+  const words = ["ember","quartz","willow","cedar","tide","moss","flint","opal","birch","dune","coral","linen","slate","amber","pine","rye"];
+  const w = words[Math.floor(Math.random()*words.length)];
+  const n = Math.floor(1000 + Math.random()*9000);
+  return `${w}-${n}`;
+}
+function slugify(s){
+  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);
+}
+function fmtClock(totalSeconds){
+  const h = Math.floor(totalSeconds/3600);
+  const m = Math.floor((totalSeconds%3600)/60);
+  const s = Math.floor(totalSeconds%60);
+  const pad = n => String(n).padStart(2,'0');
+  return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+}
+function fmtDuration(totalSeconds){
+  const h = Math.floor(totalSeconds/3600);
+  const m = Math.round((totalSeconds%3600)/60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+}
+function fmtTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+}
+function toDateInputValue(iso){
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function toTimeInputValue(iso){
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2,'0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function combineDateTime(dateStr, timeStr){
+  // dateStr: "2026-08-17", timeStr: "14:30" -> Date in local time
+  const [y,mo,da] = dateStr.split('-').map(Number);
+  const [h,mi] = timeStr.split(':').map(Number);
+  return new Date(y, mo-1, da, h, mi, 0, 0);
+}
+function csvEscape(val){
+  const s = String(val);
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+  return s;
+}
+function uid(){
+  return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+}
+function setURLHandle(handle){
+  const url = new URL(window.location.href);
+  url.searchParams.set('u', handle);
+  window.history.replaceState({}, '', url);
+}
+function setStatusDot(state){
+  const dot = document.getElementById('statusDot');
+  dot.className = 'dot' + (state ? ' ' + state : '');
+}
+
+/* ============================================================
+   App state
+   ============================================================ */
+let HANDLE = getHandleFromURL();
+let DATA = null;
+let tickInterval = null;
+
+const app = document.getElementById('app');
+const handleLink = document.getElementById('handleLink');
+const brandText = document.getElementById('brandText');
+
+async function init(){
+  if (!HANDLE){
+    renderOnboarding();
+    return;
+  }
+  DATA = await fetchData(HANDLE);
+  handleLink.style.display = 'inline-block';
+  handleLink.href = `?u=${encodeURIComponent(HANDLE)}`;
+  handleLink.textContent = DATA.display_name ? DATA.display_name : HANDLE;
+  brandText.textContent = 'tap timer';
+  renderTracker();
+}
+
+/* ---------- Onboarding screen ---------- */
+function renderOnboarding(){
+  setStatusDot(null);
+  app.innerHTML = `
+    <div class="onboard">
+      <h1>Make your tap timer</h1>
+      <p>Tap an NFC tag, start a clock instantly. Stop it whenever, then decide which project it belongs to. Nobody sees your data unless they have your exact link.</p>
+      <div class="field">
+        <label for="handleInput">Choose a handle</label>
+        <input type="text" id="handleInput" placeholder="e.g. amy-jiang" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        <div class="hint">This becomes your link: <span id="previewURL" style="color:var(--amber)"></span></div>
+      </div>
+      <button class="btn-primary" id="createBtn">Create my timer</button>
+      <div style="margin-top:14px;">
+        <button class="btn-ghost" id="randomBtn" style="width:100%;">Or generate a random one</button>
+      </div>
+      <div class="setup-note" style="text-align:left;">
+        ${JSONBIN_READY
+          ? `<strong style="color:var(--green)">Sync is on.</strong> This handle's data will follow you to any device that opens the same link.`
+          : `<strong style="color:var(--text)">One thing to know:</strong> sync isn't set up yet, so this saves in the browser you're using right now. Open the link in a different browser or device later, and it starts fresh there.`
+        }
+      </div>
+    </div>
+  `;
+
+  const input = document.getElementById('handleInput');
+  const preview = document.getElementById('previewURL');
+  const base = window.location.origin + window.location.pathname;
+
+  function updatePreview(){
+    const slug = slugify(input.value) || 'your-handle';
+    preview.textContent = `${base}?u=${slug}`;
+  }
+  input.addEventListener('input', updatePreview);
+  updatePreview();
+
+  document.getElementById('createBtn').addEventListener('click', async () => {
+    const slug = slugify(input.value);
+    if (!slug){ input.focus(); return; }
+    HANDLE = slug;
+    setURLHandle(HANDLE);
+    DATA = DEFAULT_DATA();
+    await saveData(HANDLE, DATA);
+    await init();
+  });
+
+  document.getElementById('randomBtn').addEventListener('click', async () => {
+    HANDLE = randomHandle();
+    setURLHandle(HANDLE);
+    DATA = DEFAULT_DATA();
+    await saveData(HANDLE, DATA);
+    await init();
+  });
+}
+
+/* ---------- Main tracker screen ---------- */
+function renderTracker(){
+  const running = DATA.running;
+  setStatusDot(running ? 'running' : null);
+
+  app.innerHTML = `
+    <div class="tracker">
+      ${running && running.project_id ? projectTagHTML() : ''}
+      <div class="clockface ${running ? 'running' : 'idle'}" id="clockface">00:00</div>
+      <div class="status-line" id="statusLine"></div>
+      <div class="main-action" id="mainAction"></div>
+      <div id="assignSlot"></div>
+    </div>
+    <div class="log" id="logSection"></div>
+    ${!JSONBIN_READY ? `<div class="setup-note">Saving locally to this browser only. To sync across devices, add your JSONBin credentials at the top of <code>index.html</code>.</div>` : ''}
+  `;
+
+  renderMainAction();
+  renderLog();
+
+  if (tickInterval) clearInterval(tickInterval);
+  if (running){
+    tickClock();
+    tickInterval = setInterval(tickClock, 1000);
+  }
+}
+
+function projectTagHTML(){
+  const p = DATA.projects.find(p => p.id === DATA.running.project_id);
+  return `<div class="project-tag">continuing → <span class="name">${p ? p.name : 'unknown'}</span></div>`;
+}
+
+function tickClock(){
+  if (!DATA.running) return;
+  const started = new Date(DATA.running.started_at).getTime();
+  const now = Date.now();
+  const seconds = Math.floor((now - started)/1000);
+  document.getElementById('clockface').textContent = fmtClock(seconds);
+}
+
+function renderMainAction(){
+  const slot = document.getElementById('mainAction');
+  const statusLine = document.getElementById('statusLine');
+  if (DATA.running){
+    statusLine.textContent = `started ${new Date(DATA.running.started_at).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}`;
+    slot.innerHTML = `<button class="btn-stop" id="stopBtn">Stop</button>`;
+    document.getElementById('stopBtn').addEventListener('click', stopTimer);
+  } else {
+    statusLine.textContent = 'ready';
+    slot.innerHTML = `<button class="btn-primary" id="startBtn">Start</button>`;
+    document.getElementById('startBtn').addEventListener('click', startTimer);
+  }
+  document.getElementById('assignSlot').innerHTML = '';
+}
+
+async function startTimer(){
+  DATA.running = { started_at: new Date().toISOString(), project_id: null };
+  await saveData(HANDLE, DATA);
+  renderTracker();
+}
+
+async function stopTimer(){
+  const started = new Date(DATA.running.started_at).getTime();
+  const durationSec = Math.max(1, Math.floor((Date.now() - started)/1000));
+  renderAssignPanel(durationSec);
+}
+
+function renderAssignPanel(durationSec){
+  setStatusDot('saved');
+  document.getElementById('mainAction').innerHTML = '';
+  const slot = document.getElementById('assignSlot');
+
+  const projectOptions = DATA.projects
+    .map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`)
+    .join('');
+
+  slot.innerHTML = `
+    <div class="assign-panel">
+      <div class="elapsed-summary">${fmtDuration(durationSec)} tracked</div>
+      <select id="projectSelect">
+        <option value="">— choose a project —</option>
+        ${projectOptions}
+        <option value="__new__">+ New project</option>
+      </select>
+      <div id="newProjectRow" style="display:none;" class="new-project-row">
+        <input type="text" id="newProjectName" placeholder="Project name" autocomplete="off" />
+        <button id="addProjectBtn">Add</button>
+      </div>
+      <button class="btn-primary" id="saveEntryBtn" disabled>Save entry</button>
+      <button class="btn-danger-text" id="discardBtn">Discard this session</button>
+    </div>
+  `;
+
+  const select = document.getElementById('projectSelect');
+  const newRow = document.getElementById('newProjectRow');
+  const newInput = document.getElementById('newProjectName');
+  const saveBtn = document.getElementById('saveEntryBtn');
+
+  let pendingProjectId = null;
+
+  select.addEventListener('change', () => {
+    if (select.value === '__new__'){
+      newRow.style.display = 'flex';
+      saveBtn.disabled = true;
+      pendingProjectId = null;
+      newInput.focus();
+    } else {
+      newRow.style.display = 'none';
+      pendingProjectId = select.value || null;
+      saveBtn.disabled = !pendingProjectId;
+    }
+  });
+
+  document.getElementById('addProjectBtn').addEventListener('click', () => {
+    const name = newInput.value.trim();
+    if (!name) return;
+    const newProj = { id: uid(), name };
+    DATA.projects.push(newProj);
+    const opt = document.createElement('option');
+    opt.value = newProj.id;
+    opt.textContent = name;
+    select.insertBefore(opt, select.querySelector('option[value="__new__"]'));
+    select.value = newProj.id;
+    pendingProjectId = newProj.id;
+    newRow.style.display = 'none';
+    saveBtn.disabled = false;
+  });
+
+  newInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){ e.preventDefault(); document.getElementById('addProjectBtn').click(); }
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    if (!pendingProjectId) return;
+    const entry = {
+      id: uid(),
+      project_id: pendingProjectId,
+      started_at: DATA.running.started_at,
+      ended_at: new Date().toISOString(),
+      duration_sec: durationSec
+    };
+    DATA.entries.unshift(entry);
+    DATA.running = null;
+    await saveData(HANDLE, DATA);
+    renderTracker();
+  });
+
+  document.getElementById('discardBtn').addEventListener('click', async () => {
+    DATA.running = null;
+    await saveData(HANDLE, DATA);
+    renderTracker();
+  });
+}
+
+let editingEntryId = null;
+
+function renderLog(){
+  const section = document.getElementById('logSection');
+  if (!DATA.entries.length){
+    section.innerHTML = `
+      <div class="log-header"><h2>Log</h2></div>
+      <div class="log-empty">No sessions yet. Tap the tag to start your first one.</div>
+    `;
+    renderExportPanel();
+    return;
+  }
+
+  const totalSec = DATA.entries.reduce((sum,e) => sum + e.duration_sec, 0);
+  const rows = DATA.entries.slice(0, 25).map(e => {
+    const p = DATA.projects.find(p => p.id === e.project_id);
+    if (editingEntryId === e.id){
+      return renderEditRow(e);
+    }
+    return `
+      <div class="log-entry" data-entry-id="${e.id}">
+        <div>
+          <div class="le-project">${p ? escapeHTML(p.name) : 'unassigned'}</div>
+          <div class="le-date">${fmtDate(e.started_at)}</div>
+          <div class="le-times">${fmtTime(e.started_at)} → ${fmtTime(e.ended_at)}</div>
+        </div>
+        <div class="le-right">
+          <div class="le-dur">${fmtDuration(e.duration_sec)}</div>
+          <div class="le-actions">
+            <button class="le-edit-btn" data-id="${e.id}">Edit</button>
+            <button class="le-delete" data-id="${e.id}">Delete</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  section.innerHTML = `
+    <div class="log-header">
+      <h2>Log</h2>
+      <div class="log-total">${fmtDuration(totalSec)} total</div>
+    </div>
+    ${rows}
+  `;
+
+  section.querySelectorAll('.le-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      editingEntryId = btn.dataset.id;
+      renderLog();
+    });
+  });
+  section.querySelectorAll('.le-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const entry = DATA.entries.find(e => e.id === btn.dataset.id);
+      const label = entry ? `${fmtDate(entry.started_at)}, ${fmtDuration(entry.duration_sec)}` : 'this entry';
+      if (!confirm(`Delete ${label}? This can't be undone.`)) return;
+      DATA.entries = DATA.entries.filter(e => e.id !== btn.dataset.id);
+      await saveData(HANDLE, DATA);
+      renderLog();
+    });
+  });
+
+  renderExportPanel();
+}
+
+function renderEditRow(e){
+  const p = DATA.projects.find(p => p.id === e.project_id);
+  return `
+    <div class="le-edit" data-entry-id="${e.id}">
+      <div style="font-size:13px; color:var(--text-dim);">${p ? escapeHTML(p.name) : 'unassigned'} — ${fmtDate(e.started_at)}</div>
+      <div class="le-edit-row">
+        <div class="le-edit-field">
+          <label>Clock in</label>
+          <input type="date" id="editDate_${e.id}" value="${toDateInputValue(e.started_at)}" />
+        </div>
+      </div>
+      <div class="le-edit-row">
+        <div class="le-edit-field">
+          <label>In</label>
+          <input type="time" id="editIn_${e.id}" value="${toTimeInputValue(e.started_at)}" />
+        </div>
+        <div class="le-edit-field">
+          <label>Out</label>
+          <input type="time" id="editOut_${e.id}" value="${toTimeInputValue(e.ended_at)}" />
+        </div>
+      </div>
+      <div class="le-edit-error" id="editError_${e.id}" style="display:none;"></div>
+      <div class="le-edit-actions">
+        <button class="btn-ghost" id="editCancel_${e.id}">Cancel</button>
+        <button class="btn-primary" id="editSave_${e.id}" style="width:auto;">Save</button>
+      </div>
+    </div>
+  `;
+}
+
+function attachEditHandlers(){
+  if (!editingEntryId) return;
+  const id = editingEntryId;
+  const cancelBtn = document.getElementById(`editCancel_${id}`);
+  const saveBtn = document.getElementById(`editSave_${id}`);
+  if (cancelBtn) cancelBtn.addEventListener('click', () => {
+    editingEntryId = null;
+    renderLog();
+  });
+  if (saveBtn) saveBtn.addEventListener('click', async () => {
+    const entry = DATA.entries.find(en => en.id === id);
+    if (!entry) return;
+    const dateVal = document.getElementById(`editDate_${id}`).value;
+    const inVal = document.getElementById(`editIn_${id}`).value;
+    const outVal = document.getElementById(`editOut_${id}`).value;
+    const errEl = document.getElementById(`editError_${id}`);
+    if (!dateVal || !inVal || !outVal){
+      errEl.textContent = 'All fields are required.';
+      errEl.style.display = 'block';
+      return;
+    }
+    let start = combineDateTime(dateVal, inVal);
+    let end = combineDateTime(dateVal, outVal);
+    if (end <= start){
+      // assume clock-out rolled past midnight
+      end = new Date(end.getTime() + 24*60*60*1000);
+    }
+    const durationSec = Math.round((end - start)/1000);
+    entry.started_at = start.toISOString();
+    entry.ended_at = end.toISOString();
+    entry.duration_sec = durationSec;
+    await saveData(HANDLE, DATA);
+    editingEntryId = null;
+    renderLog();
+  });
+}
+
+/* ============================================================
+   CSV export
+   ============================================================ */
+function renderExportPanel(){
+  const wrap = document.getElementById('logSection');
+  if (!wrap) return;
+
+  const projectOptions = DATA.projects
+    .map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`)
+    .join('');
+
+  const panel = document.createElement('div');
+  panel.className = 'export-panel';
+  panel.innerHTML = `
+    <h2>Export</h2>
+    <div class="export-row">
+      <select id="exportProjectSelect">
+        <option value="__all__">All projects</option>
+        ${projectOptions}
+      </select>
+      <button id="exportCsvBtn">Download CSV</button>
+    </div>
+  `;
+  wrap.appendChild(panel);
+
+  document.getElementById('exportCsvBtn').addEventListener('click', () => {
+    const projectId = document.getElementById('exportProjectSelect').value;
+    exportCSV(projectId);
+  });
+
+  // Re-attach edit handlers now that the log section is fully in the DOM
+  attachEditHandlers();
+}
+
+function exportCSV(projectFilter){
+  let entries = DATA.entries.slice();
+  if (projectFilter && projectFilter !== '__all__'){
+    entries = entries.filter(e => e.project_id === projectFilter);
+  }
+  // chronological order in the export, oldest first
+  entries = entries.slice().sort((a,b) => new Date(a.started_at) - new Date(b.started_at));
+
+  const header = ['Date','Clock In','Clock Out','Duration (h:mm)','Project'];
+  const lines = [header.map(csvEscape).join(',')];
+
+  entries.forEach(e => {
+    const p = DATA.projects.find(p => p.id === e.project_id);
+    const h = Math.floor(e.duration_sec/3600);
+    const m = Math.round((e.duration_sec%3600)/60);
+    const durStr = `${h}:${String(m).padStart(2,'0')}`;
+    lines.push([
+      toDateInputValue(e.started_at),
+      fmtTime(e.started_at),
+      fmtTime(e.ended_at),
+      durStr,
+      p ? p.name : 'unassigned'
+    ].map(csvEscape).join(','));
+  });
+
+  const csvContent = lines.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const projLabel = (!projectFilter || projectFilter === '__all__')
+    ? 'all-projects'
+    : slugify((DATA.projects.find(p => p.id === projectFilter) || {}).name || 'project');
+  const datePart = toDateInputValue(new Date().toISOString());
+  a.href = url;
+  a.download = `tap-timer_${HANDLE}_${projLabel}_${datePart}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function escapeHTML(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>
