@@ -14,8 +14,9 @@
     --line:#2c2c2a;
     --text:#f2efe9;
     --text-dim:#8a8880;
-    --amber:#ff8a3d;
-    --amber-dim:#7a4a26;
+    --amber:#4ade80;
+    --amber-dim:#276b45;
+    --pink:#ff3d9a;
     --green:#4ade80;
     --red:#ef4444;
     --mono:'IBM Plex Mono', monospace;
@@ -62,7 +63,7 @@
     background:var(--text-dim);
     transition:background .3s;
   }
-  .brand .dot.running{ background:var(--amber); box-shadow:0 0 8px var(--amber); animation:pulse 1.6s ease-in-out infinite; }
+  .brand .dot.running{ background:var(--pink); box-shadow:0 0 8px var(--pink); animation:pulse 1.6s ease-in-out infinite; }
   .brand .dot.saved{ background:var(--green); box-shadow:0 0 8px var(--green); }
   @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
 
@@ -197,7 +198,7 @@
     align-items:baseline;
   }
   .clockface .colon{ transition:opacity .1s; }
-  .clockface.running .colon{ animation:blink 1s steps(1) infinite; color:var(--amber); }
+  .clockface.running .colon{ animation:blink 1s steps(1) infinite; color:var(--pink); }
   @keyframes blink{ 50%{ opacity:0.15; } }
   .clockface.idle{ color:var(--text-dim); }
 
@@ -217,6 +218,84 @@
     width:100%;
     font-size:17px;
     padding:18px;
+  }
+
+  .utility-row{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+  .utility-row button{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--text-dim);
+    font-size:13px;
+    font-weight:500;
+    padding:9px 16px;
+    border-radius:20px;
+  }
+  .utility-row button:hover{ border-color:var(--pink); color:var(--pink); }
+
+  /* ---------- Manual entry modal ---------- */
+  .modal-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:100;
+  }
+  .modal-panel{
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:24px;
+    width:100%;
+    max-width:400px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .modal-panel h3{
+    font-family:var(--mono);
+    font-size:15px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--text);
+  }
+  .modal-field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .modal-field label{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--text-dim);
+  }
+  .modal-row{
+    display:flex;
+    gap:10px;
+  }
+  .modal-row .modal-field{ flex:1; min-width:0; }
+  .modal-actions{
+    display:flex;
+    gap:8px;
+    justify-content:flex-end;
+    margin-top:6px;
+  }
+  .modal-actions button{
+    font-size:14px;
+    padding:10px 18px;
+    width:auto;
+  }
+  .modal-error{
+    font-size:12.5px;
+    color:var(--red);
   }
 
   /* ---------- Assign panel ---------- */
@@ -262,7 +341,7 @@
     font-size:14px;
     white-space:nowrap;
   }
-  .new-project-row button:hover{ border-color:var(--amber); color:var(--amber); }
+  .new-project-row button:hover{ border-color:var(--pink); color:var(--pink); }
 
   /* ---------- Log ---------- */
   .log{
@@ -273,8 +352,10 @@
   .log-header{
     display:flex;
     justify-content:space-between;
-    align-items:baseline;
-    margin-bottom:12px;
+    align-items:center;
+    margin-bottom:14px;
+    gap:10px;
+    flex-wrap:wrap;
   }
   .log-header h2{
     font-family:var(--mono);
@@ -288,6 +369,39 @@
     font-size:13px;
     color:var(--text);
   }
+  .log-filter{
+    font-family:var(--sans);
+    font-size:13px;
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:7px 10px;
+    border-radius:6px;
+    outline:none;
+  }
+  .log-filter:focus{ border-color:var(--amber); }
+  .project-totals{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin-bottom:18px;
+    padding-bottom:16px;
+    border-bottom:1px solid var(--line);
+  }
+  .project-totals-row{
+    display:flex;
+    justify-content:space-between;
+    font-size:13px;
+  }
+  .project-totals-row .pt-name{ color:var(--text-dim); }
+  .project-totals-row .pt-dur{ font-family:var(--mono); color:var(--amber); }
+  .project-totals-row.pt-grand{
+    padding-top:6px;
+    margin-top:4px;
+    border-top:1px solid var(--line);
+  }
+  .project-totals-row.pt-grand .pt-name{ color:var(--text); font-weight:600; }
+  .project-totals-row.pt-grand .pt-dur{ color:var(--pink); }
   .log-entry{
     display:flex;
     justify-content:space-between;
@@ -349,6 +463,7 @@
     display:flex;
     flex-direction:column;
     gap:10px;
+    overflow:hidden;
   }
   .le-edit-row{
     display:flex;
@@ -356,6 +471,7 @@
   }
   .le-edit-field{
     flex:1;
+    min-width:0;
     display:flex;
     flex-direction:column;
     gap:4px;
@@ -373,10 +489,15 @@
     color:var(--text);
     font-family:var(--mono);
     font-size:14px;
-    padding:9px 10px;
+    padding:9px 8px;
     border-radius:6px;
     outline:none;
     width:100%;
+    min-width:0;
+  }
+  .le-edit select{
+    font-size:14px;
+    padding:9px 10px;
   }
   .le-edit input:focus{ border-color:var(--amber); }
   .le-edit-actions{
@@ -422,7 +543,7 @@
     padding:0 18px;
     white-space:nowrap;
   }
-  .export-row button:hover{ border-color:var(--amber); color:var(--amber); }
+  .export-row button:hover{ border-color:var(--pink); color:var(--pink); }
 
   .setup-note{
     max-width:480px;
@@ -455,6 +576,8 @@
   @media (max-width:400px){
     .brand{ font-size:11px; }
     .handle-link{ font-size:11px; padding:5px 9px; }
+    .le-edit-row{ flex-direction:column; }
+    .modal-row{ flex-direction:column; }
   }
 </style>
 </head>
@@ -724,6 +847,10 @@ function renderTracker(){
       <div class="status-line" id="statusLine"></div>
       <div class="main-action" id="mainAction"></div>
       <div id="assignSlot"></div>
+      <div class="utility-row" id="utilityRow">
+        <button id="addProjectUtilBtn">+ Add project</button>
+        <button id="addEntryUtilBtn">+ Add entry</button>
+      </div>
     </div>
     <div class="log" id="logSection"></div>
     ${!JSONBIN_READY ? `<div class="setup-note">Saving locally to this browser only. To sync across devices, add your JSONBin credentials at the top of <code>index.html</code>.</div>` : ''}
@@ -731,6 +858,9 @@ function renderTracker(){
 
   renderMainAction();
   renderLog();
+
+  document.getElementById('addProjectUtilBtn').addEventListener('click', openAddProjectModal);
+  document.getElementById('addEntryUtilBtn').addEventListener('click', openAddEntryModal);
 
   if (tickInterval) clearInterval(tickInterval);
   if (running){
@@ -785,6 +915,8 @@ async function stopTimer(){
 function renderAssignPanel(durationSec){
   setStatusDot('saved');
   document.getElementById('mainAction').innerHTML = '';
+  const utilRow = document.getElementById('utilityRow');
+  if (utilRow) utilRow.style.display = 'none';
   const slot = document.getElementById('assignSlot');
 
   const projectOptions = DATA.projects
@@ -870,6 +1002,168 @@ function renderAssignPanel(durationSec){
 }
 
 let editingEntryId = null;
+let logProjectFilter = '__all__';
+
+/* ============================================================
+   Modals: Add project, Add manual entry
+   ============================================================ */
+function closeModal(){
+  const existing = document.getElementById('modalBackdrop');
+  if (existing) existing.remove();
+}
+
+function openAddProjectModal(){
+  closeModal();
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'modalBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal-panel">
+      <h3>New project</h3>
+      <div class="modal-field">
+        <label for="modalProjectName">Project name</label>
+        <input type="text" id="modalProjectName" autocomplete="off" placeholder="e.g. FLORA Fashion Week" />
+      </div>
+      <div class="modal-error" id="modalProjectError" style="display:none;"></div>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="modalCancelBtn">Cancel</button>
+        <button class="btn-primary" id="modalSaveBtn">Add project</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  const input = document.getElementById('modalProjectName');
+  input.focus();
+
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModal(); });
+  document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter'){ e.preventDefault(); document.getElementById('modalSaveBtn').click(); } });
+
+  document.getElementById('modalSaveBtn').addEventListener('click', async () => {
+    const name = input.value.trim();
+    const errEl = document.getElementById('modalProjectError');
+    if (!name){
+      errEl.textContent = 'Give the project a name.';
+      errEl.style.display = 'block';
+      return;
+    }
+    DATA.projects.push({ id: uid(), name });
+    await saveData(HANDLE, DATA);
+    closeModal();
+    renderLog();
+  });
+}
+
+function openAddEntryModal(){
+  closeModal();
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'modalBackdrop';
+
+  const projectOptions = DATA.projects
+    .map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`)
+    .join('');
+
+  const todayStr = toDateInputValue(new Date().toISOString());
+
+  backdrop.innerHTML = `
+    <div class="modal-panel">
+      <h3>Add entry manually</h3>
+      <div class="modal-field">
+        <label for="modalEntryProject">Project</label>
+        <select id="modalEntryProject">
+          <option value="">— choose a project —</option>
+          ${projectOptions}
+          <option value="__new__">+ New project</option>
+        </select>
+      </div>
+      <div class="modal-field" id="modalNewProjectField" style="display:none;">
+        <label for="modalNewProjectName">New project name</label>
+        <input type="text" id="modalNewProjectName" autocomplete="off" placeholder="Project name" />
+      </div>
+      <div class="modal-field">
+        <label for="modalEntryDate">Date</label>
+        <input type="date" id="modalEntryDate" value="${todayStr}" />
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label for="modalEntryIn">Clock in</label>
+          <input type="time" id="modalEntryIn" />
+        </div>
+        <div class="modal-field">
+          <label for="modalEntryOut">Clock out</label>
+          <input type="time" id="modalEntryOut" />
+        </div>
+      </div>
+      <div class="modal-error" id="modalEntryError" style="display:none;"></div>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="modalCancelBtn">Cancel</button>
+        <button class="btn-primary" id="modalSaveBtn">Save entry</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModal(); });
+  document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+
+  const projectSelect = document.getElementById('modalEntryProject');
+  const newProjectField = document.getElementById('modalNewProjectField');
+  projectSelect.addEventListener('change', () => {
+    newProjectField.style.display = projectSelect.value === '__new__' ? 'flex' : 'none';
+  });
+
+  document.getElementById('modalSaveBtn').addEventListener('click', async () => {
+    const errEl = document.getElementById('modalEntryError');
+    let projectId = projectSelect.value;
+    const dateVal = document.getElementById('modalEntryDate').value;
+    const inVal = document.getElementById('modalEntryIn').value;
+    const outVal = document.getElementById('modalEntryOut').value;
+
+    if (projectId === '__new__'){
+      const newName = document.getElementById('modalNewProjectName').value.trim();
+      if (!newName){
+        errEl.textContent = 'Give the new project a name.';
+        errEl.style.display = 'block';
+        return;
+      }
+      const newProj = { id: uid(), name: newName };
+      DATA.projects.push(newProj);
+      projectId = newProj.id;
+    }
+
+    if (!projectId){
+      errEl.textContent = 'Choose a project.';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (!dateVal || !inVal || !outVal){
+      errEl.textContent = 'Fill in the date, clock in, and clock out.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    let start = combineDateTime(dateVal, inVal);
+    let end = combineDateTime(dateVal, outVal);
+    if (end <= start){
+      end = new Date(end.getTime() + 24*60*60*1000);
+    }
+    const durationSec = Math.round((end - start)/1000);
+
+    DATA.entries.unshift({
+      id: uid(),
+      project_id: projectId,
+      started_at: start.toISOString(),
+      ended_at: end.toISOString(),
+      duration_sec: durationSec
+    });
+
+    await saveData(HANDLE, DATA);
+    closeModal();
+    renderLog();
+  });
+}
 
 function renderLog(){
   const section = document.getElementById('logSection');
@@ -882,8 +1176,34 @@ function renderLog(){
     return;
   }
 
-  const totalSec = DATA.entries.reduce((sum,e) => sum + e.duration_sec, 0);
-  const rows = DATA.entries.slice(0, 25).map(e => {
+  // Per-project totals, always computed from ALL entries regardless of filter
+  const totalsByProject = {};
+  let grandTotal = 0;
+  DATA.entries.forEach(e => {
+    totalsByProject[e.project_id] = (totalsByProject[e.project_id] || 0) + e.duration_sec;
+    grandTotal += e.duration_sec;
+  });
+  const totalsRows = DATA.projects
+    .filter(p => totalsByProject[p.id])
+    .sort((a,b) => totalsByProject[b.id] - totalsByProject[a.id])
+    .map(p => `
+      <div class="project-totals-row">
+        <span class="pt-name">${escapeHTML(p.name)}</span>
+        <span class="pt-dur">${fmtDuration(totalsByProject[p.id])}</span>
+      </div>
+    `).join('');
+  const unassignedSec = totalsByProject['null'] || totalsByProject[undefined] || 0;
+
+  // Filtered entry list
+  const filteredEntries = logProjectFilter === '__all__'
+    ? DATA.entries
+    : DATA.entries.filter(e => e.project_id === logProjectFilter);
+
+  const filterOptions = DATA.projects
+    .map(p => `<option value="${p.id}" ${logProjectFilter === p.id ? 'selected' : ''}>${escapeHTML(p.name)}</option>`)
+    .join('');
+
+  const rows = filteredEntries.slice(0, 25).map(e => {
     const p = DATA.projects.find(p => p.id === e.project_id);
     if (editingEntryId === e.id){
       return renderEditRow(e);
@@ -909,10 +1229,27 @@ function renderLog(){
   section.innerHTML = `
     <div class="log-header">
       <h2>Log</h2>
-      <div class="log-total">${fmtDuration(totalSec)} total</div>
+      <select class="log-filter" id="logFilterSelect">
+        <option value="__all__" ${logProjectFilter === '__all__' ? 'selected' : ''}>All projects</option>
+        ${filterOptions}
+      </select>
     </div>
-    ${rows}
+    <div class="project-totals">
+      ${totalsRows}
+      ${unassignedSec ? `<div class="project-totals-row"><span class="pt-name">unassigned</span><span class="pt-dur">${fmtDuration(unassignedSec)}</span></div>` : ''}
+      <div class="project-totals-row pt-grand">
+        <span class="pt-name">Total</span>
+        <span class="pt-dur">${fmtDuration(grandTotal)}</span>
+      </div>
+    </div>
+    ${rows || `<div class="log-empty">No sessions for this project yet.</div>`}
   `;
+
+  document.getElementById('logFilterSelect').addEventListener('change', (e) => {
+    logProjectFilter = e.target.value;
+    editingEntryId = null;
+    renderLog();
+  });
 
   section.querySelectorAll('.le-edit-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -936,14 +1273,26 @@ function renderLog(){
 
 function renderEditRow(e){
   const p = DATA.projects.find(p => p.id === e.project_id);
+  const projectOptions = DATA.projects
+    .map(pr => `<option value="${pr.id}" ${pr.id === e.project_id ? 'selected' : ''}>${escapeHTML(pr.name)}</option>`)
+    .join('');
   return `
     <div class="le-edit" data-entry-id="${e.id}">
-      <div style="font-size:13px; color:var(--text-dim);">${p ? escapeHTML(p.name) : 'unassigned'} — ${fmtDate(e.started_at)}</div>
-      <div class="le-edit-row">
-        <div class="le-edit-field">
-          <label>Clock in</label>
-          <input type="date" id="editDate_${e.id}" value="${toDateInputValue(e.started_at)}" />
-        </div>
+      <div style="font-size:13px; color:var(--text-dim);">${fmtDate(e.started_at)}</div>
+      <div class="le-edit-field">
+        <label>Project</label>
+        <select id="editProject_${e.id}">
+          ${projectOptions}
+          <option value="__new__">+ New project</option>
+        </select>
+      </div>
+      <div class="le-edit-field" id="editNewProjectField_${e.id}" style="display:none;">
+        <label>New project name</label>
+        <input type="text" id="editNewProjectName_${e.id}" placeholder="Project name" autocomplete="off" />
+      </div>
+      <div class="le-edit-field">
+        <label>Date</label>
+        <input type="date" id="editDate_${e.id}" value="${toDateInputValue(e.started_at)}" />
       </div>
       <div class="le-edit-row">
         <div class="le-edit-field">
@@ -969,6 +1318,13 @@ function attachEditHandlers(){
   const id = editingEntryId;
   const cancelBtn = document.getElementById(`editCancel_${id}`);
   const saveBtn = document.getElementById(`editSave_${id}`);
+  const projectSelect = document.getElementById(`editProject_${id}`);
+  const newProjectField = document.getElementById(`editNewProjectField_${id}`);
+
+  if (projectSelect) projectSelect.addEventListener('change', () => {
+    newProjectField.style.display = projectSelect.value === '__new__' ? 'flex' : 'none';
+  });
+
   if (cancelBtn) cancelBtn.addEventListener('click', () => {
     editingEntryId = null;
     renderLog();
@@ -980,6 +1336,20 @@ function attachEditHandlers(){
     const inVal = document.getElementById(`editIn_${id}`).value;
     const outVal = document.getElementById(`editOut_${id}`).value;
     const errEl = document.getElementById(`editError_${id}`);
+    let projectId = projectSelect ? projectSelect.value : entry.project_id;
+
+    if (projectId === '__new__'){
+      const newName = document.getElementById(`editNewProjectName_${id}`).value.trim();
+      if (!newName){
+        errEl.textContent = 'Give the new project a name.';
+        errEl.style.display = 'block';
+        return;
+      }
+      const newProj = { id: uid(), name: newName };
+      DATA.projects.push(newProj);
+      projectId = newProj.id;
+    }
+
     if (!dateVal || !inVal || !outVal){
       errEl.textContent = 'All fields are required.';
       errEl.style.display = 'block';
@@ -992,6 +1362,7 @@ function attachEditHandlers(){
       end = new Date(end.getTime() + 24*60*60*1000);
     }
     const durationSec = Math.round((end - start)/1000);
+    entry.project_id = projectId;
     entry.started_at = start.toISOString();
     entry.ended_at = end.toISOString();
     entry.duration_sec = durationSec;
