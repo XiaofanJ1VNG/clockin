@@ -746,10 +746,12 @@ function projectTagHTML(){
 
 function tickClock(){
   if (!DATA.running) return;
+  const clockEl = document.getElementById('clockface');
+  if (!clockEl) return;
   const started = new Date(DATA.running.started_at).getTime();
   const now = Date.now();
   const seconds = Math.floor((now - started)/1000);
-  document.getElementById('clockface').textContent = fmtClock(seconds);
+  clockEl.textContent = fmtClock(seconds);
 }
 
 function renderMainAction(){
@@ -774,6 +776,7 @@ async function startTimer(){
 }
 
 async function stopTimer(){
+  if (tickInterval){ clearInterval(tickInterval); tickInterval = null; }
   const started = new Date(DATA.running.started_at).getTime();
   const durationSec = Math.max(1, Math.floor((Date.now() - started)/1000));
   renderAssignPanel(durationSec);
