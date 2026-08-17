@@ -497,12 +497,69 @@ const LocalStore = {
    ============================================================ */
 const DEFAULT_DATA = () => ({ display_name: "", projects: [], entries: [], running: null });
 
+/* ============================================================
+   CONFIG — JSONBin.io settings.
+   Create a free bin at jsonbin.io, put {} as its initial content,
+   then paste your Bin ID and X-Master-Key below.
+   ============================================================ */
+const JSONBIN_BIN_ID = "YOUR_BIN_ID";
+const JSONBIN_MASTER_KEY = "YOUR_MASTER_KEY";
+const JSONBIN_READY = JSONBIN_BIN_ID !== "YOUR_BIN_ID" && JSONBIN_MASTER_KEY !== "YOUR_MASTER_KEY";
+const JSONBIN_BASE = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+
+async function jsonbinReadAll(){
+  const res = await fetch(`${JSONBIN_BASE}/latest`, {
+    headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+  });
+  if (!res.ok) throw new Error(`JSONBin read failed: ${res.status}`);
+  const json = await res.json();
+  return json.record || {};
+}
+
+async function jsonbinWriteAll(allData){
+  const res = await fetch(JSONBIN_BASE, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JSONBIN_MASTER_KEY
+    },
+    body: JSON.stringify(allData)
+  });
+  if (!res.ok) throw new Error(`JSONBin write failed: ${res.status}`);
+}
+
 async function fetchData(handle){
-  return LocalStore.load(handle) || DEFAULT_DATA();
+  // Always warm the local cache first so the UI can render instantly.
+  const cached = LocalStore.load(handle);
+  if (!JSONBIN_READY) return cached || DEFAULT_DATA();
+
+  try {
+    const allData = await jsonbinReadAll();
+    const remote = allData[handle];
+    if (remote){
+      LocalStore.save(handle, remote); // keep local cache fresh
+      return remote;
+    }
+    return cached || DEFAULT_DATA();
+  } catch (e){
+    console.warn('Sync unavailable, using local copy:', e);
+    return cached || DEFAULT_DATA();
+  }
 }
 
 async function saveData(handle, data){
-  LocalStore.save(handle, data);
+  LocalStore.save(handle, data); // instant local cache, always happens
+  if (!JSONBIN_READY) return;
+
+  try {
+    // Re-fetch the whole bin right before writing, to minimize the chance
+    // of clobbering another device's save that landed in between.
+    const allData = await jsonbinReadAll().catch(() => ({}));
+    allData[handle] = data;
+    await jsonbinWriteAll(allData);
+  } catch (e){
+    console.warn('Sync save failed, change is saved locally only:', e);
+  }
 }
 
 /* ============================================================
@@ -617,7 +674,10 @@ function renderOnboarding(){
         <button class="btn-ghost" id="randomBtn" style="width:100%;">Or generate a random one</button>
       </div>
       <div class="setup-note" style="text-align:left;">
-        <strong style="color:var(--text)">One thing to know:</strong> this saves in the browser you're using right now. If your NFC tag always opens in the same default browser on your phone, that's all you need. Open the link in a different browser or device later, and it starts fresh there.
+        ${JSONBIN_READY
+          ? `<strong style="color:var(--green)">Sync is on.</strong> This handle's data will follow you to any device that opens the same link.`
+          : `<strong style="color:var(--text)">One thing to know:</strong> sync isn't set up yet, so this saves in the browser you're using right now. Open the link in a different browser or device later, and it starts fresh there.`
+        }
       </div>
     </div>
   `;
@@ -666,6 +726,7 @@ function renderTracker(){
       <div id="assignSlot"></div>
     </div>
     <div class="log" id="logSection"></div>
+    ${!JSONBIN_READY ? `<div class="setup-note">Saving locally to this browser only. To sync across devices, add your JSONBin credentials at the top of <code>index.html</code>.</div>` : ''}
   `;
 
   renderMainAction();
