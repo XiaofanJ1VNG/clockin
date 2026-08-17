@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Tap Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#141414;
+    --bg-raised:#1c1c1c;
+    --line:#2c2c2a;
+    --text:#f2efe9;
+    --text-dim:#8a8880;
+    --amber:#ff8a3d;
+    --amber-dim:#7a4a26;
+    --green:#4ade80;
+    --red:#ef4444;
+    --mono:'IBM Plex Mono', monospace;
+    --sans:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+
+  .wrap{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:32px 20px;
+    width:100%;
+  }
+
+  /* ---------- Top-left brand mark ---------- */
+  .brand{
+    position:fixed;
+    top:20px; left:20px;
+    font-family:var(--mono);
+    font-size:13px;
+    letter-spacing:0.04em;
+    color:var(--text-dim);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    z-index:10;
+  }
+  .brand .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--text-dim);
+    transition:background .3s;
+  }
+  .brand .dot.running{ background:var(--amber); box-shadow:0 0 8px var(--amber); animation:pulse 1.6s ease-in-out infinite; }
+  .brand .dot.saved{ background:var(--green); box-shadow:0 0 8px var(--green); }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  .handle-link{
+    position:fixed;
+    top:20px; right:20px;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--text-dim);
+    text-decoration:none;
+    border:1px solid var(--line);
+    padding:6px 10px;
+    border-radius:20px;
+    z-index:10;
+  }
+  .handle-link:hover{ border-color:var(--text-dim); color:var(--text); }
+
+  /* ---------- Onboarding (no handle yet) ---------- */
+  .onboard{
+    max-width:440px;
+    width:100%;
+    text-align:center;
+  }
+  .onboard h1{
+    font-family:var(--mono);
+    font-size:28px;
+    font-weight:600;
+    line-height:1.3;
+    margin-bottom:14px;
+    letter-spacing:-0.01em;
+  }
+  .onboard p{
+    color:var(--text-dim);
+    font-size:15px;
+    line-height:1.6;
+    margin-bottom:28px;
+  }
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    text-align:left;
+    margin-bottom:16px;
+  }
+  .field label{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--text-dim);
+  }
+  input[type=text]{
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:16px;
+    padding:14px 16px;
+    border-radius:8px;
+    outline:none;
+    width:100%;
+    transition:border-color .2s;
+  }
+  input[type=text]:focus{ border-color:var(--amber); }
+  .hint{ font-size:12.5px; color:var(--text-dim); margin-top:6px; }
+
+  button{
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:15px;
+    border:none;
+    border-radius:8px;
+    padding:14px 20px;
+    cursor:pointer;
+    transition:transform .1s ease, opacity .2s ease, background .2s ease;
+  }
+  button:active{ transform:scale(0.97); }
+  .btn-primary{
+    background:var(--amber);
+    color:#1a1200;
+    width:100%;
+  }
+  .btn-primary:hover{ opacity:0.92; }
+  .btn-primary:disabled{ opacity:0.4; cursor:not-allowed; }
+  .btn-ghost{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--text);
+  }
+  .btn-ghost:hover{ border-color:var(--text-dim); }
+  .btn-stop{
+    background:var(--red);
+    color:#2a0a0a;
+  }
+  .btn-danger-text{
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    font-size:13px;
+    text-decoration:underline;
+    padding:4px;
+  }
+
+  /* ---------- Main tracker ---------- */
+  .tracker{
+    width:100%;
+    max-width:480px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:36px;
+  }
+  .project-tag{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .project-tag .name{ color:var(--text); }
+
+  .clockface{
+    font-family:var(--mono);
+    font-weight:700;
+    font-size:clamp(48px, 14vw, 96px);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:0.01em;
+    line-height:1;
+    display:flex;
+    align-items:baseline;
+  }
+  .clockface .colon{ transition:opacity .1s; }
+  .clockface.running .colon{ animation:blink 1s steps(1) infinite; color:var(--amber); }
+  @keyframes blink{ 50%{ opacity:0.15; } }
+  .clockface.idle{ color:var(--text-dim); }
+
+  .status-line{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--text-dim);
+    min-height:18px;
+    text-align:center;
+  }
+
+  .main-action{
+    width:100%;
+    max-width:280px;
+  }
+  .main-action button{
+    width:100%;
+    font-size:17px;
+    padding:18px;
+  }
+
+  /* ---------- Assign panel ---------- */
+  .assign-panel{
+    width:100%;
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:24px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .assign-panel .elapsed-summary{
+    font-family:var(--mono);
+    font-size:22px;
+    text-align:center;
+    color:var(--green);
+    padding-bottom:4px;
+  }
+  select{
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:15px;
+    padding:12px 14px;
+    border-radius:8px;
+    outline:none;
+    width:100%;
+  }
+  select:focus{ border-color:var(--amber); }
+  .new-project-row{
+    display:flex;
+    gap:8px;
+  }
+  .new-project-row input{ flex:1; }
+  .new-project-row button{
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:0 16px;
+    font-size:14px;
+    white-space:nowrap;
+  }
+  .new-project-row button:hover{ border-color:var(--amber); color:var(--amber); }
+
+  /* ---------- Log ---------- */
+  .log{
+    width:100%;
+    max-width:480px;
+    margin-top:8px;
+  }
+  .log-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:12px;
+  }
+  .log-header h2{
+    font-family:var(--mono);
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--text-dim);
+  }
+  .log-total{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--text);
+  }
+  .log-entry{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 0;
+    border-bottom:1px solid var(--line);
+    font-size:14px;
+  }
+  .log-entry:last-child{ border-bottom:none; }
+  .log-entry .le-project{ color:var(--text); }
+  .log-entry .le-date{ color:var(--text-dim); font-size:12px; margin-top:2px; }
+  .log-entry .le-dur{ font-family:var(--mono); color:var(--amber); }
+  .log-empty{
+    color:var(--text-dim);
+    font-size:13.5px;
+    text-align:center;
+    padding:24px 0;
+  }
+
+  .setup-note{
+    max-width:480px;
+    width:100%;
+    background:var(--bg-raised);
+    border:1px dashed var(--line);
+    border-radius:10px;
+    padding:16px 18px;
+    font-size:13px;
+    color:var(--text-dim);
+    line-height:1.6;
+    margin-top:24px;
+  }
+  .setup-note code{
+    font-family:var(--mono);
+    background:var(--bg);
+    padding:1px 6px;
+    border-radius:4px;
+    color:var(--amber);
+  }
+
+  footer{
+    text-align:center;
+    padding:20px;
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--text-dim);
+  }
+
+  @media (max-width:400px){
+    .brand{ font-size:11px; }
+    .handle-link{ font-size:11px; padding:5px 9px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="brand"><span class="dot" id="statusDot"></span><span id="brandText">tap timer</span></div>
+<a class="handle-link" id="handleLink" href="#" style="display:none;"></a>
+
+<div class="wrap" id="app"></div>
+
+<footer>built for taps, not for typing</footer>
+
+<script>
+/* ============================================================
+   Local store — this is the only storage layer. Everything lives
+   in this browser's localStorage, keyed by handle. No server,
+   no accounts, no network calls. Works great as long as taps
+   always open in the same browser on the same device.
+   ============================================================ */
+const LocalStore = {
+  key(handle){ return `tap-timer:${handle}`; },
+  load(handle){
+    try { return JSON.parse(localStorage.getItem(this.key(handle))) || null; }
+    catch { return null; }
+  },
+  save(handle, data){
+    localStorage.setItem(this.key(handle), JSON.stringify(data));
+  }
+};
+
+/* ============================================================
+   Data layer
+   Shape per handle:
+   {
+     display_name: string,
+     projects: [{id, name}],
+     entries: [{id, project_id, started_at, ended_at, duration_sec}],
+     running: {started_at, project_id|null} | null
+   }
+   ============================================================ */
+const DEFAULT_DATA = () => ({ display_name: "", projects: [], entries: [], running: null });
+
+async function fetchData(handle){
+  return LocalStore.load(handle) || DEFAULT_DATA();
+}
+
+async function saveData(handle, data){
+  LocalStore.save(handle, data);
+}
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+function getHandleFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  return (params.get('u') || '').trim();
+}
+function randomHandle(){
+  const words = ["ember","quartz","willow","cedar","tide","moss","flint","opal","birch","dune","coral","linen","slate","amber","pine","rye"];
+  const w = words[Math.floor(Math.random()*words.length)];
+  const n = Math.floor(1000 + Math.random()*9000);
+  return `${w}-${n}`;
+}
+function slugify(s){
+  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);
+}
+function fmtClock(totalSeconds){
+  const h = Math.floor(totalSeconds/3600);
+  const m = Math.floor((totalSeconds%3600)/60);
+  const s = Math.floor(totalSeconds%60);
+  const pad = n => String(n).padStart(2,'0');
+  return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+}
+function fmtDuration(totalSeconds){
+  const h = Math.floor(totalSeconds/3600);
+  const m = Math.round((totalSeconds%3600)/60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+}
+function uid(){
+  return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+}
+function setURLHandle(handle){
+  const url = new URL(window.location.href);
+  url.searchParams.set('u', handle);
+  window.history.replaceState({}, '', url);
+}
+function setStatusDot(state){
+  const dot = document.getElementById('statusDot');
+  dot.className = 'dot' + (state ? ' ' + state : '');
+}
+
+/* ============================================================
+   App state
+   ============================================================ */
+let HANDLE = getHandleFromURL();
+let DATA = null;
+let tickInterval = null;
+
+const app = document.getElementById('app');
+const handleLink = document.getElementById('handleLink');
+const brandText = document.getElementById('brandText');
+
+async function init(){
+  if (!HANDLE){
+    renderOnboarding();
+    return;
+  }
+  DATA = await fetchData(HANDLE);
+  handleLink.style.display = 'inline-block';
+  handleLink.href = `?u=${encodeURIComponent(HANDLE)}`;
+  handleLink.textContent = DATA.display_name ? DATA.display_name : HANDLE;
+  brandText.textContent = 'tap timer';
+  renderTracker();
+}
+
+/* ---------- Onboarding screen ---------- */
+function renderOnboarding(){
+  setStatusDot(null);
+  app.innerHTML = `
+    <div class="onboard">
+      <h1>Make your tap timer</h1>
+      <p>Tap an NFC tag, start a clock instantly. Stop it whenever, then decide which project it belongs to. Nobody sees your data unless they have your exact link.</p>
+      <div class="field">
+        <label for="handleInput">Choose a handle</label>
+        <input type="text" id="handleInput" placeholder="e.g. amy-jiang" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        <div class="hint">This becomes your link: <span id="previewURL" style="color:var(--amber)"></span></div>
+      </div>
+      <button class="btn-primary" id="createBtn">Create my timer</button>
+      <div style="margin-top:14px;">
+        <button class="btn-ghost" id="randomBtn" style="width:100%;">Or generate a random one</button>
+      </div>
+      <div class="setup-note" style="text-align:left;">
+        <strong style="color:var(--text)">One thing to know:</strong> this saves in the browser you're using right now. If your NFC tag always opens in the same default browser on your phone, that's all you need. Open the link in a different browser or device later, and it starts fresh there.
+      </div>
+    </div>
+  `;
+
+  const input = document.getElementById('handleInput');
+  const preview = document.getElementById('previewURL');
+  const base = window.location.origin + window.location.pathname;
+
+  function updatePreview(){
+    const slug = slugify(input.value) || 'your-handle';
+    preview.textContent = `${base}?u=${slug}`;
+  }
+  input.addEventListener('input', updatePreview);
+  updatePreview();
+
+  document.getElementById('createBtn').addEventListener('click', async () => {
+    const slug = slugify(input.value);
+    if (!slug){ input.focus(); return; }
+    HANDLE = slug;
+    setURLHandle(HANDLE);
+    DATA = DEFAULT_DATA();
+    await saveData(HANDLE, DATA);
+    await init();
+  });
+
+  document.getElementById('randomBtn').addEventListener('click', async () => {
+    HANDLE = randomHandle();
+    setURLHandle(HANDLE);
+    DATA = DEFAULT_DATA();
+    await saveData(HANDLE, DATA);
+    await init();
+  });
+}
+
+/* ---------- Main tracker screen ---------- */
+function renderTracker(){
+  const running = DATA.running;
+  setStatusDot(running ? 'running' : null);
+
+  app.innerHTML = `
+    <div class="tracker">
+      ${running && running.project_id ? projectTagHTML() : ''}
+      <div class="clockface ${running ? 'running' : 'idle'}" id="clockface">00:00</div>
+      <div class="status-line" id="statusLine"></div>
+      <div class="main-action" id="mainAction"></div>
+      <div id="assignSlot"></div>
+    </div>
+    <div class="log" id="logSection"></div>
+  `;
+
+  renderMainAction();
+  renderLog();
+
+  if (tickInterval) clearInterval(tickInterval);
+  if (running){
+    tickClock();
+    tickInterval = setInterval(tickClock, 1000);
+  }
+}
+
+function projectTagHTML(){
+  const p = DATA.projects.find(p => p.id === DATA.running.project_id);
+  return `<div class="project-tag">continuing → <span class="name">${p ? p.name : 'unknown'}</span></div>`;
+}
+
+function tickClock(){
+  if (!DATA.running) return;
+  const started = new Date(DATA.running.started_at).getTime();
+  const now = Date.now();
+  const seconds = Math.floor((now - started)/1000);
+  document.getElementById('clockface').textContent = fmtClock(seconds);
+}
+
+function renderMainAction(){
+  const slot = document.getElementById('mainAction');
+  const statusLine = document.getElementById('statusLine');
+  if (DATA.running){
+    statusLine.textContent = `started ${new Date(DATA.running.started_at).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}`;
+    slot.innerHTML = `<button class="btn-stop" id="stopBtn">Stop</button>`;
+    document.getElementById('stopBtn').addEventListener('click', stopTimer);
+  } else {
+    statusLine.textContent = 'ready';
+    slot.innerHTML = `<button class="btn-primary" id="startBtn">Start</button>`;
+    document.getElementById('startBtn').addEventListener('click', startTimer);
+  }
+  document.getElementById('assignSlot').innerHTML = '';
+}
+
+async function startTimer(){
+  DATA.running = { started_at: new Date().toISOString(), project_id: null };
+  await saveData(HANDLE, DATA);
+  renderTracker();
+}
+
+async function stopTimer(){
+  const started = new Date(DATA.running.started_at).getTime();
+  const durationSec = Math.max(1, Math.floor((Date.now() - started)/1000));
+  renderAssignPanel(durationSec);
+}
+
+function renderAssignPanel(durationSec){
+  setStatusDot('saved');
+  document.getElementById('mainAction').innerHTML = '';
+  const slot = document.getElementById('assignSlot');
+
+  const projectOptions = DATA.projects
+    .map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`)
+    .join('');
+
+  slot.innerHTML = `
+    <div class="assign-panel">
+      <div class="elapsed-summary">${fmtDuration(durationSec)} tracked</div>
+      <select id="projectSelect">
+        <option value="">— choose a project —</option>
+        ${projectOptions}
+        <option value="__new__">+ New project</option>
+      </select>
+      <div id="newProjectRow" style="display:none;" class="new-project-row">
+        <input type="text" id="newProjectName" placeholder="Project name" autocomplete="off" />
+        <button id="addProjectBtn">Add</button>
+      </div>
+      <button class="btn-primary" id="saveEntryBtn" disabled>Save entry</button>
+      <button class="btn-danger-text" id="discardBtn">Discard this session</button>
+    </div>
+  `;
+
+  const select = document.getElementById('projectSelect');
+  const newRow = document.getElementById('newProjectRow');
+  const newInput = document.getElementById('newProjectName');
+  const saveBtn = document.getElementById('saveEntryBtn');
+
+  let pendingProjectId = null;
+
+  select.addEventListener('change', () => {
+    if (select.value === '__new__'){
+      newRow.style.display = 'flex';
+      saveBtn.disabled = true;
+      pendingProjectId = null;
+      newInput.focus();
+    } else {
+      newRow.style.display = 'none';
+      pendingProjectId = select.value || null;
+      saveBtn.disabled = !pendingProjectId;
+    }
+  });
+
+  document.getElementById('addProjectBtn').addEventListener('click', () => {
+    const name = newInput.value.trim();
+    if (!name) return;
+    const newProj = { id: uid(), name };
+    DATA.projects.push(newProj);
+    const opt = document.createElement('option');
+    opt.value = newProj.id;
+    opt.textContent = name;
+    select.insertBefore(opt, select.querySelector('option[value="__new__"]'));
+    select.value = newProj.id;
+    pendingProjectId = newProj.id;
+    newRow.style.display = 'none';
+    saveBtn.disabled = false;
+  });
+
+  newInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){ e.preventDefault(); document.getElementById('addProjectBtn').click(); }
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    if (!pendingProjectId) return;
+    const entry = {
+      id: uid(),
+      project_id: pendingProjectId,
+      started_at: DATA.running.started_at,
+      ended_at: new Date().toISOString(),
+      duration_sec: durationSec
+    };
+    DATA.entries.unshift(entry);
+    DATA.running = null;
+    await saveData(HANDLE, DATA);
+    renderTracker();
+  });
+
+  document.getElementById('discardBtn').addEventListener('click', async () => {
+    DATA.running = null;
+    await saveData(HANDLE, DATA);
+    renderTracker();
+  });
+}
+
+function renderLog(){
+  const section = document.getElementById('logSection');
+  if (!DATA.entries.length){
+    section.innerHTML = `
+      <div class="log-header"><h2>Log</h2></div>
+      <div class="log-empty">No sessions yet. Tap the tag to start your first one.</div>
+    `;
+    return;
+  }
+
+  const totalSec = DATA.entries.reduce((sum,e) => sum + e.duration_sec, 0);
+  const rows = DATA.entries.slice(0, 25).map(e => {
+    const p = DATA.projects.find(p => p.id === e.project_id);
+    return `
+      <div class="log-entry">
+        <div>
+          <div class="le-project">${p ? escapeHTML(p.name) : 'unassigned'}</div>
+          <div class="le-date">${fmtDate(e.started_at)}</div>
+        </div>
+        <div class="le-dur">${fmtDuration(e.duration_sec)}</div>
+      </div>
+    `;
+  }).join('');
+
+  section.innerHTML = `
+    <div class="log-header">
+      <h2>Log</h2>
+      <div class="log-total">${fmtDuration(totalSec)} total</div>
+    </div>
+    ${rows}
+  `;
+}
+
+function escapeHTML(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>
