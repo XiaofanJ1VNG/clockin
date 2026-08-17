@@ -445,44 +445,56 @@
     letter-spacing:0.08em;
     color:var(--text-dim);
   }
-  .log-total{
-    font-family:var(--mono);
-    font-size:13px;
-    color:var(--text);
+
+  /* ---------- Project tabs ---------- */
+  .project-tabs{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding-bottom:2px;
+    margin-bottom:16px;
+    scrollbar-width:none;
   }
-  .log-filter{
+  .project-tabs::-webkit-scrollbar{ display:none; }
+  .project-tab{
     font-family:var(--sans);
     font-size:13px;
-    background:var(--bg-raised);
+    font-weight:500;
+    white-space:nowrap;
+    background:transparent;
     border:1px solid var(--line);
-    color:var(--text);
-    padding:7px 10px;
-    border-radius:6px;
-    outline:none;
+    color:var(--text-dim);
+    padding:8px 16px;
+    border-radius:20px;
+    flex-shrink:0;
   }
-  .log-filter:focus{ border-color:var(--amber); }
-  .project-totals{
+  .project-tab:hover{ border-color:var(--pink); color:var(--pink); }
+  .project-tab.active{
+    background:var(--amber);
+    border-color:var(--amber);
+    color:#04150c;
+    font-weight:600;
+  }
+
+  .log-total-display{
     display:flex;
-    flex-direction:column;
-    gap:6px;
+    justify-content:space-between;
+    align-items:baseline;
     margin-bottom:18px;
     padding-bottom:16px;
     border-bottom:1px solid var(--line);
   }
-  .project-totals-row{
-    display:flex;
-    justify-content:space-between;
-    font-size:13px;
+  .log-total-display .ltd-label{
+    font-size:14px;
+    color:var(--text);
+    font-weight:600;
   }
-  .project-totals-row .pt-name{ color:var(--text-dim); }
-  .project-totals-row .pt-dur{ font-family:var(--mono); color:var(--amber); }
-  .project-totals-row.pt-grand{
-    padding-top:6px;
-    margin-top:4px;
-    border-top:1px solid var(--line);
+  .log-total-display .ltd-value{
+    font-family:var(--mono);
+    font-size:20px;
+    color:var(--amber);
   }
-  .project-totals-row.pt-grand .pt-name{ color:var(--text); font-weight:600; }
-  .project-totals-row.pt-grand .pt-dur{ color:var(--pink); }
+
   .log-entry{
     display:flex;
     justify-content:space-between;
@@ -1267,32 +1279,41 @@ function renderLog(){
     return;
   }
 
-  // Per-project totals, always computed from ALL entries regardless of filter
+  // Per-project totals, always computed from ALL entries
   const totalsByProject = {};
   let grandTotal = 0;
   DATA.entries.forEach(e => {
     totalsByProject[e.project_id] = (totalsByProject[e.project_id] || 0) + e.duration_sec;
     grandTotal += e.duration_sec;
   });
-  const totalsRows = DATA.projects
-    .filter(p => totalsByProject[p.id])
-    .sort((a,b) => totalsByProject[b.id] - totalsByProject[a.id])
-    .map(p => `
-      <div class="project-totals-row">
-        <span class="pt-name">${escapeHTML(p.name)}</span>
-        <span class="pt-dur">${fmtDuration(totalsByProject[p.id])}</span>
-      </div>
-    `).join('');
-  const unassignedSec = totalsByProject['null'] || totalsByProject[undefined] || 0;
 
-  // Filtered entry list
+  // Only show tabs for projects that actually have time logged, sorted by most time first
+  const projectsWithTime = DATA.projects
+    .filter(p => totalsByProject[p.id])
+    .sort((a,b) => totalsByProject[b.id] - totalsByProject[a.id]);
+
+  // If the currently selected filter no longer has any entries (e.g. just deleted), fall back to All
+  if (logProjectFilter !== '__all__' && !totalsByProject[logProjectFilter]){
+    logProjectFilter = '__all__';
+  }
+
+  const tabsHTML = [`<button class="project-tab ${logProjectFilter === '__all__' ? 'active' : ''}" data-filter="__all__">All</button>`]
+    .concat(projectsWithTime.map(p => `<button class="project-tab ${logProjectFilter === p.id ? 'active' : ''}" data-filter="${p.id}">${escapeHTML(p.name)}</button>`))
+    .join('');
+
+  // Filtered entry list + label/total that follow the active filter
   const filteredEntries = logProjectFilter === '__all__'
     ? DATA.entries
     : DATA.entries.filter(e => e.project_id === logProjectFilter);
 
-  const filterOptions = DATA.projects
-    .map(p => `<option value="${p.id}" ${logProjectFilter === p.id ? 'selected' : ''}>${escapeHTML(p.name)}</option>`)
-    .join('');
+  const activeProject = logProjectFilter === '__all__'
+    ? null
+    : DATA.projects.find(p => p.id === logProjectFilter);
+
+  const totalLabel = activeProject ? `${activeProject.name} total` : 'All projects total';
+  const totalValue = logProjectFilter === '__all__'
+    ? grandTotal
+    : (totalsByProject[logProjectFilter] || 0);
 
   const rows = filteredEntries.slice(0, 25).map(e => {
     const p = DATA.projects.find(p => p.id === e.project_id);
@@ -1320,26 +1341,21 @@ function renderLog(){
   section.innerHTML = `
     <div class="log-header">
       <h2>Log</h2>
-      <select class="log-filter" id="logFilterSelect">
-        <option value="__all__" ${logProjectFilter === '__all__' ? 'selected' : ''}>All projects</option>
-        ${filterOptions}
-      </select>
     </div>
-    <div class="project-totals">
-      ${totalsRows}
-      ${unassignedSec ? `<div class="project-totals-row"><span class="pt-name">unassigned</span><span class="pt-dur">${fmtDuration(unassignedSec)}</span></div>` : ''}
-      <div class="project-totals-row pt-grand">
-        <span class="pt-name">Total</span>
-        <span class="pt-dur">${fmtDuration(grandTotal)}</span>
-      </div>
+    <div class="project-tabs" id="projectTabs">${tabsHTML}</div>
+    <div class="log-total-display">
+      <span class="ltd-label">${escapeHTML(totalLabel)}</span>
+      <span class="ltd-value">${fmtDuration(totalValue)}</span>
     </div>
     ${rows || `<div class="log-empty">No sessions for this project yet.</div>`}
   `;
 
-  document.getElementById('logFilterSelect').addEventListener('change', (e) => {
-    logProjectFilter = e.target.value;
-    editingEntryId = null;
-    renderLog();
+  section.querySelectorAll('.project-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      logProjectFilter = btn.dataset.filter;
+      editingEntryId = null;
+      renderLog();
+    });
   });
 
   section.querySelectorAll('.le-edit-btn').forEach(btn => {
