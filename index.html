@@ -291,7 +291,8 @@
   .log-entry{
     display:flex;
     justify-content:space-between;
-    align-items:center;
+    align-items:flex-start;
+    gap:12px;
     padding:12px 0;
     border-bottom:1px solid var(--line);
     font-size:14px;
@@ -299,13 +300,129 @@
   .log-entry:last-child{ border-bottom:none; }
   .log-entry .le-project{ color:var(--text); }
   .log-entry .le-date{ color:var(--text-dim); font-size:12px; margin-top:2px; }
+  .log-entry .le-times{
+    font-family:var(--mono);
+    color:var(--text-dim);
+    font-size:11.5px;
+    margin-top:3px;
+    letter-spacing:0.01em;
+  }
+  .le-right{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:6px;
+    flex-shrink:0;
+  }
   .log-entry .le-dur{ font-family:var(--mono); color:var(--amber); }
+  .le-actions{
+    display:flex;
+    gap:10px;
+  }
+  .le-actions button{
+    background:none;
+    border:none;
+    padding:0;
+    font-family:var(--sans);
+    font-size:12px;
+    color:var(--text-dim);
+    text-decoration:underline;
+    cursor:pointer;
+  }
+  .le-actions button:hover{ color:var(--text); }
+  .le-actions .le-delete:hover{ color:var(--red); }
   .log-empty{
     color:var(--text-dim);
     font-size:13.5px;
     text-align:center;
     padding:24px 0;
   }
+
+  /* ---------- Inline edit row ---------- */
+  .le-edit{
+    width:100%;
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px;
+    margin:10px 0;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .le-edit-row{
+    display:flex;
+    gap:10px;
+  }
+  .le-edit-field{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .le-edit-field label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--text-dim);
+  }
+  .le-edit input[type=date],
+  .le-edit input[type=time]{
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:14px;
+    padding:9px 10px;
+    border-radius:6px;
+    outline:none;
+    width:100%;
+  }
+  .le-edit input:focus{ border-color:var(--amber); }
+  .le-edit-actions{
+    display:flex;
+    gap:8px;
+    justify-content:flex-end;
+  }
+  .le-edit-actions button{
+    font-size:13px;
+    padding:9px 16px;
+  }
+  .le-edit-error{
+    font-size:12px;
+    color:var(--red);
+  }
+
+  /* ---------- Export panel ---------- */
+  .export-panel{
+    width:100%;
+    max-width:480px;
+    margin-top:28px;
+    padding-top:20px;
+    border-top:1px solid var(--line);
+  }
+  .export-panel h2{
+    font-family:var(--mono);
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--text-dim);
+    margin-bottom:12px;
+  }
+  .export-row{
+    display:flex;
+    gap:8px;
+  }
+  .export-row select{ flex:1; }
+  .export-row button{
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-size:14px;
+    padding:0 18px;
+    white-space:nowrap;
+  }
+  .export-row button:hover{ border-color:var(--amber); color:var(--amber); }
 
   .setup-note{
     max-width:480px;
@@ -420,6 +537,31 @@ function fmtDuration(totalSeconds){
 function fmtDate(iso){
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+}
+function fmtTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+}
+function toDateInputValue(iso){
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function toTimeInputValue(iso){
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2,'0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function combineDateTime(dateStr, timeStr){
+  // dateStr: "2026-08-17", timeStr: "14:30" -> Date in local time
+  const [y,mo,da] = dateStr.split('-').map(Number);
+  const [h,mi] = timeStr.split(':').map(Number);
+  return new Date(y, mo-1, da, h, mi, 0, 0);
+}
+function csvEscape(val){
+  const s = String(val);
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+  return s;
 }
 function uid(){
   return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
@@ -663,6 +805,8 @@ function renderAssignPanel(durationSec){
   });
 }
 
+let editingEntryId = null;
+
 function renderLog(){
   const section = document.getElementById('logSection');
   if (!DATA.entries.length){
@@ -670,19 +814,30 @@ function renderLog(){
       <div class="log-header"><h2>Log</h2></div>
       <div class="log-empty">No sessions yet. Tap the tag to start your first one.</div>
     `;
+    renderExportPanel();
     return;
   }
 
   const totalSec = DATA.entries.reduce((sum,e) => sum + e.duration_sec, 0);
   const rows = DATA.entries.slice(0, 25).map(e => {
     const p = DATA.projects.find(p => p.id === e.project_id);
+    if (editingEntryId === e.id){
+      return renderEditRow(e);
+    }
     return `
-      <div class="log-entry">
+      <div class="log-entry" data-entry-id="${e.id}">
         <div>
           <div class="le-project">${p ? escapeHTML(p.name) : 'unassigned'}</div>
           <div class="le-date">${fmtDate(e.started_at)}</div>
+          <div class="le-times">${fmtTime(e.started_at)} → ${fmtTime(e.ended_at)}</div>
         </div>
-        <div class="le-dur">${fmtDuration(e.duration_sec)}</div>
+        <div class="le-right">
+          <div class="le-dur">${fmtDuration(e.duration_sec)}</div>
+          <div class="le-actions">
+            <button class="le-edit-btn" data-id="${e.id}">Edit</button>
+            <button class="le-delete" data-id="${e.id}">Delete</button>
+          </div>
+        </div>
       </div>
     `;
   }).join('');
@@ -694,6 +849,167 @@ function renderLog(){
     </div>
     ${rows}
   `;
+
+  section.querySelectorAll('.le-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      editingEntryId = btn.dataset.id;
+      renderLog();
+    });
+  });
+  section.querySelectorAll('.le-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const entry = DATA.entries.find(e => e.id === btn.dataset.id);
+      const label = entry ? `${fmtDate(entry.started_at)}, ${fmtDuration(entry.duration_sec)}` : 'this entry';
+      if (!confirm(`Delete ${label}? This can't be undone.`)) return;
+      DATA.entries = DATA.entries.filter(e => e.id !== btn.dataset.id);
+      await saveData(HANDLE, DATA);
+      renderLog();
+    });
+  });
+
+  renderExportPanel();
+}
+
+function renderEditRow(e){
+  const p = DATA.projects.find(p => p.id === e.project_id);
+  return `
+    <div class="le-edit" data-entry-id="${e.id}">
+      <div style="font-size:13px; color:var(--text-dim);">${p ? escapeHTML(p.name) : 'unassigned'} — ${fmtDate(e.started_at)}</div>
+      <div class="le-edit-row">
+        <div class="le-edit-field">
+          <label>Clock in</label>
+          <input type="date" id="editDate_${e.id}" value="${toDateInputValue(e.started_at)}" />
+        </div>
+      </div>
+      <div class="le-edit-row">
+        <div class="le-edit-field">
+          <label>In</label>
+          <input type="time" id="editIn_${e.id}" value="${toTimeInputValue(e.started_at)}" />
+        </div>
+        <div class="le-edit-field">
+          <label>Out</label>
+          <input type="time" id="editOut_${e.id}" value="${toTimeInputValue(e.ended_at)}" />
+        </div>
+      </div>
+      <div class="le-edit-error" id="editError_${e.id}" style="display:none;"></div>
+      <div class="le-edit-actions">
+        <button class="btn-ghost" id="editCancel_${e.id}">Cancel</button>
+        <button class="btn-primary" id="editSave_${e.id}" style="width:auto;">Save</button>
+      </div>
+    </div>
+  `;
+}
+
+function attachEditHandlers(){
+  if (!editingEntryId) return;
+  const id = editingEntryId;
+  const cancelBtn = document.getElementById(`editCancel_${id}`);
+  const saveBtn = document.getElementById(`editSave_${id}`);
+  if (cancelBtn) cancelBtn.addEventListener('click', () => {
+    editingEntryId = null;
+    renderLog();
+  });
+  if (saveBtn) saveBtn.addEventListener('click', async () => {
+    const entry = DATA.entries.find(en => en.id === id);
+    if (!entry) return;
+    const dateVal = document.getElementById(`editDate_${id}`).value;
+    const inVal = document.getElementById(`editIn_${id}`).value;
+    const outVal = document.getElementById(`editOut_${id}`).value;
+    const errEl = document.getElementById(`editError_${id}`);
+    if (!dateVal || !inVal || !outVal){
+      errEl.textContent = 'All fields are required.';
+      errEl.style.display = 'block';
+      return;
+    }
+    let start = combineDateTime(dateVal, inVal);
+    let end = combineDateTime(dateVal, outVal);
+    if (end <= start){
+      // assume clock-out rolled past midnight
+      end = new Date(end.getTime() + 24*60*60*1000);
+    }
+    const durationSec = Math.round((end - start)/1000);
+    entry.started_at = start.toISOString();
+    entry.ended_at = end.toISOString();
+    entry.duration_sec = durationSec;
+    await saveData(HANDLE, DATA);
+    editingEntryId = null;
+    renderLog();
+  });
+}
+
+/* ============================================================
+   CSV export
+   ============================================================ */
+function renderExportPanel(){
+  const wrap = document.getElementById('logSection');
+  if (!wrap) return;
+
+  const projectOptions = DATA.projects
+    .map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`)
+    .join('');
+
+  const panel = document.createElement('div');
+  panel.className = 'export-panel';
+  panel.innerHTML = `
+    <h2>Export</h2>
+    <div class="export-row">
+      <select id="exportProjectSelect">
+        <option value="__all__">All projects</option>
+        ${projectOptions}
+      </select>
+      <button id="exportCsvBtn">Download CSV</button>
+    </div>
+  `;
+  wrap.appendChild(panel);
+
+  document.getElementById('exportCsvBtn').addEventListener('click', () => {
+    const projectId = document.getElementById('exportProjectSelect').value;
+    exportCSV(projectId);
+  });
+
+  // Re-attach edit handlers now that the log section is fully in the DOM
+  attachEditHandlers();
+}
+
+function exportCSV(projectFilter){
+  let entries = DATA.entries.slice();
+  if (projectFilter && projectFilter !== '__all__'){
+    entries = entries.filter(e => e.project_id === projectFilter);
+  }
+  // chronological order in the export, oldest first
+  entries = entries.slice().sort((a,b) => new Date(a.started_at) - new Date(b.started_at));
+
+  const header = ['Date','Clock In','Clock Out','Duration (h:mm)','Project'];
+  const lines = [header.map(csvEscape).join(',')];
+
+  entries.forEach(e => {
+    const p = DATA.projects.find(p => p.id === e.project_id);
+    const h = Math.floor(e.duration_sec/3600);
+    const m = Math.round((e.duration_sec%3600)/60);
+    const durStr = `${h}:${String(m).padStart(2,'0')}`;
+    lines.push([
+      toDateInputValue(e.started_at),
+      fmtTime(e.started_at),
+      fmtTime(e.ended_at),
+      durStr,
+      p ? p.name : 'unassigned'
+    ].map(csvEscape).join(','));
+  });
+
+  const csvContent = lines.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const projLabel = (!projectFilter || projectFilter === '__all__')
+    ? 'all-projects'
+    : slugify((DATA.projects.find(p => p.id === projectFilter) || {}).name || 'project');
+  const datePart = toDateInputValue(new Date().toISOString());
+  a.href = url;
+  a.download = `tap-timer_${HANDLE}_${projLabel}_${datePart}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function escapeHTML(str){
