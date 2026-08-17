@@ -137,8 +137,7 @@
     display:flex;
     flex-direction:column;
     align-items:center;
-    justify-content:center;
-    padding:32px 20px;
+    padding:0 20px;
     width:100%;
     position:relative;
     z-index:1;
@@ -270,10 +269,19 @@
   .tracker{
     width:100%;
     max-width:480px;
+    /* First-screen height on mobile: tuned so the clock sits centered
+       and the log's Total row just peeks in below, without showing
+       individual entries. If this cutoff feels off on your phone,
+       adjust the subtracted px value — larger number = shorter
+       tracker area = Total appears higher/sooner. */
+    min-height:calc(100svh - 142px);
     display:flex;
     flex-direction:column;
     align-items:center;
+    justify-content:center;
     gap:36px;
+    padding-top:24px;
+    padding-bottom:24px;
   }
   .project-tag{
     font-family:var(--mono);
@@ -1376,7 +1384,7 @@ function renderLog(){
       <h2>Log</h2>
     </div>
     <div class="project-tabs" id="projectTabs">${tabsHTML}</div>
-    <div class="log-total-display">
+    <div class="log-total-display" id="logTotalDisplay">
       <span class="ltd-label">${escapeHTML(totalLabel)}</span>
       <span class="ltd-value">${fmtDuration(totalValue)}</span>
     </div>
