@@ -28,6 +28,13 @@
     --mono:'IBM Plex Mono', monospace;
     --sans:'Inter', sans-serif;
   }
+
+  /* While the fluid gradient is showing, the near-black stroke color
+     disappears against it. Brighten borders to match --text-dim so
+     tabs, buttons, and dividers stay visible over the gradient. */
+  body.is-running{
+    --line:#8a8880;
+  }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{height:100%;}
   body{
@@ -235,8 +242,9 @@
   }
   .btn-ghost:hover{ border-color:var(--text-dim); }
   .btn-stop{
-    background:var(--red);
-    color:#2a0a0a;
+    background:var(--amber-dim);
+    color:var(--amber);
+    border:1px solid var(--amber);
   }
   .btn-danger-text{
     background:none;
