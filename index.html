@@ -520,6 +520,90 @@
     box-shadow:0 0 0 1px rgba(0,0,0,0.35) inset;
   }
 
+  /* ---------- Project tab delete mode (long-press) ---------- */
+  .project-tab{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-touch-callout:none;
+  }
+  .project-tab .tab-remove{
+    display:none;
+    align-items:center;
+    justify-content:center;
+    width:16px;
+    height:16px;
+    border-radius:50%;
+    background:var(--red);
+    color:#fff;
+    font-size:11px;
+    line-height:1;
+    flex-shrink:0;
+  }
+  .project-tabs.delete-mode .project-tab:not([data-filter="__all__"]){
+    animation:tabJiggle 0.28s ease-in-out infinite alternate;
+    border-color:var(--red);
+  }
+  .project-tabs.delete-mode .project-tab:not([data-filter="__all__"]) .tab-remove{
+    display:inline-flex;
+  }
+  @keyframes tabJiggle{
+    from{ transform:rotate(-1deg); }
+    to{ transform:rotate(1deg); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .project-tabs.delete-mode .project-tab{ animation:none; }
+  }
+  .tabs-done-btn{
+    font-family:var(--sans);
+    font-size:12.5px;
+    font-weight:600;
+    background:none;
+    border:none;
+    color:var(--amber);
+    padding:8px 4px;
+    flex-shrink:0;
+  }
+
+  /* ---------- Month switcher ---------- */
+  .month-switcher{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:16px;
+    margin-bottom:16px;
+  }
+  .month-switcher button{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--text-dim);
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    font-size:15px;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .month-switcher button:hover:not(:disabled){ border-color:var(--pink); color:var(--pink); }
+  .month-switcher button:disabled{ opacity:0.3; cursor:not-allowed; }
+  .month-switcher .month-label{
+    font-family:var(--mono);
+    font-size:14px;
+    color:var(--text);
+    min-width:120px;
+    text-align:center;
+  }
+  body.is-running .month-switcher button{
+    mix-blend-mode:difference;
+    border-color:#ffffff;
+    color:#ffffff;
+    text-shadow:0 1px 3px rgba(0,0,0,0.6);
+  }
+
   .log-total-display{
     display:flex;
     justify-content:space-between;
@@ -884,6 +968,20 @@ function combineDateTime(dateStr, timeStr){
   const [h,mi] = timeStr.split(':').map(Number);
   return new Date(y, mo-1, da, h, mi, 0, 0);
 }
+function toMonthKey(iso){
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function fmtMonthLabel(monthKey){
+  const [y, mo] = monthKey.split('-').map(Number);
+  const d = new Date(y, mo-1, 1);
+  return d.toLocaleDateString(undefined, { month:'long', year:'numeric' });
+}
+function shiftMonthKey(monthKey, delta){
+  const [y, mo] = monthKey.split('-').map(Number);
+  const d = new Date(y, mo-1+delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
 function csvEscape(val){
   const s = String(val);
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
@@ -1150,6 +1248,8 @@ function renderAssignPanel(durationSec){
 
 let editingEntryId = null;
 let logProjectFilter = '__all__';
+let logMonthFilter = null; // null = All time; otherwise 'YYYY-MM' string
+let tabDeleteMode = false;
 
 /* ============================================================
    Modals: Add project, Add manual entry
@@ -1323,32 +1423,53 @@ function renderLog(){
     return;
   }
 
-  // Per-project totals, always computed from ALL entries
+  // All months that have at least one entry, sorted oldest to newest
+  const allMonthKeys = Array.from(new Set(DATA.entries.map(e => toMonthKey(e.started_at)))).sort();
+  const earliestMonth = allMonthKeys[0];
+  const latestMonth = allMonthKeys[allMonthKeys.length - 1];
+
+  // Default to the most recent month with data, the first time the log renders
+  if (logMonthFilter === null){
+    logMonthFilter = latestMonth;
+  }
+  // If the selected month somehow has no data any more (e.g. its only entry got deleted),
+  // fall back to the latest month that does.
+  if (!allMonthKeys.includes(logMonthFilter)){
+    logMonthFilter = latestMonth;
+  }
+
+  const monthEntries = DATA.entries.filter(e => toMonthKey(e.started_at) === logMonthFilter);
+
+  // Per-project totals, computed within the selected month only
   const totalsByProject = {};
   let grandTotal = 0;
-  DATA.entries.forEach(e => {
+  monthEntries.forEach(e => {
     totalsByProject[e.project_id] = (totalsByProject[e.project_id] || 0) + e.duration_sec;
     grandTotal += e.duration_sec;
   });
 
-  // Only show tabs for projects that actually have time logged, sorted by most time first
+  // Only show tabs for projects that have time in the selected month, sorted by most time first
   const projectsWithTime = DATA.projects
     .filter(p => totalsByProject[p.id])
     .sort((a,b) => totalsByProject[b.id] - totalsByProject[a.id]);
 
-  // If the currently selected filter no longer has any entries (e.g. just deleted), fall back to All
+  // If the currently selected filter has no entries in this month, fall back to All
   if (logProjectFilter !== '__all__' && !totalsByProject[logProjectFilter]){
     logProjectFilter = '__all__';
   }
 
   const tabsHTML = [`<button class="project-tab ${logProjectFilter === '__all__' ? 'active' : ''}" data-filter="__all__">All</button>`]
-    .concat(projectsWithTime.map(p => `<button class="project-tab ${logProjectFilter === p.id ? 'active' : ''}" data-filter="${p.id}">${escapeHTML(p.name)}</button>`))
+    .concat(projectsWithTime.map(p => `
+      <button class="project-tab ${logProjectFilter === p.id ? 'active' : ''}" data-filter="${p.id}">
+        <span class="tab-remove" data-project-id="${p.id}">×</span>${escapeHTML(p.name)}
+      </button>
+    `))
     .join('');
 
-  // Filtered entry list + label/total that follow the active filter
+  // Filtered entry list + label/total that follow the active filters
   const filteredEntries = logProjectFilter === '__all__'
-    ? DATA.entries
-    : DATA.entries.filter(e => e.project_id === logProjectFilter);
+    ? monthEntries
+    : monthEntries.filter(e => e.project_id === logProjectFilter);
 
   const activeProject = logProjectFilter === '__all__'
     ? null
@@ -1382,25 +1503,59 @@ function renderLog(){
     `;
   }).join('');
 
+  const canGoEarlier = logMonthFilter > earliestMonth;
+  const canGoLater = logMonthFilter < latestMonth;
+
   section.innerHTML = `
     <div class="log-header">
       <h2>Log</h2>
     </div>
+    <div class="month-switcher">
+      <button id="monthPrevBtn" ${canGoEarlier ? '' : 'disabled'} aria-label="Previous month">‹</button>
+      <span class="month-label">${fmtMonthLabel(logMonthFilter)}</span>
+      <button id="monthNextBtn" ${canGoLater ? '' : 'disabled'} aria-label="Next month">›</button>
+    </div>
     <div class="project-tabs" id="projectTabs">${tabsHTML}</div>
+    ${tabDeleteMode ? `
+    <div class="tabs-done-row" style="text-align:right; margin-bottom:10px;">
+      <button class="tabs-done-btn" id="tabsDoneBtn" style="display:inline-block;">Done</button>
+    </div>
+    ` : ''}
     <div class="log-total-display" id="logTotalDisplay">
       <span class="ltd-label">${escapeHTML(totalLabel)}</span>
       <span class="ltd-value">${fmtDuration(totalValue)}</span>
     </div>
-    ${rows || `<div class="log-empty">No sessions for this project yet.</div>`}
+    ${rows || `<div class="log-empty">No sessions for this project this month.</div>`}
   `;
 
-  section.querySelectorAll('.project-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      logProjectFilter = btn.dataset.filter;
-      editingEntryId = null;
+  if (tabDeleteMode){
+    document.getElementById('projectTabs').classList.add('delete-mode');
+  }
+
+  document.getElementById('monthPrevBtn').addEventListener('click', () => {
+    if (!canGoEarlier) return;
+    logMonthFilter = shiftMonthKey(logMonthFilter, -1);
+    logProjectFilter = '__all__';
+    editingEntryId = null;
+    renderLog();
+  });
+  document.getElementById('monthNextBtn').addEventListener('click', () => {
+    if (!canGoLater) return;
+    logMonthFilter = shiftMonthKey(logMonthFilter, 1);
+    logProjectFilter = '__all__';
+    editingEntryId = null;
+    renderLog();
+  });
+
+  const tabsDoneBtn = document.getElementById('tabsDoneBtn');
+  if (tabsDoneBtn){
+    tabsDoneBtn.addEventListener('click', () => {
+      tabDeleteMode = false;
       renderLog();
     });
-  });
+  }
+
+  attachProjectTabHandlers(section);
 
   section.querySelectorAll('.le-edit-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1420,6 +1575,69 @@ function renderLog(){
   });
 
   renderExportPanel();
+}
+
+function attachProjectTabHandlers(section){
+  const LONG_PRESS_MS = 500;
+
+  section.querySelectorAll('.project-tab').forEach(btn => {
+    const filterId = btn.dataset.filter;
+    let pressTimer = null;
+    let longPressFired = false;
+
+    const startPress = () => {
+      if (filterId === '__all__') return; // "All" can't be long-pressed into delete mode
+      longPressFired = false;
+      pressTimer = setTimeout(() => {
+        longPressFired = true;
+        tabDeleteMode = true;
+        renderLog();
+      }, LONG_PRESS_MS);
+    };
+    const cancelPress = () => {
+      if (pressTimer) clearTimeout(pressTimer);
+    };
+
+    btn.addEventListener('mousedown', startPress);
+    btn.addEventListener('mouseup', cancelPress);
+    btn.addEventListener('mouseleave', cancelPress);
+    btn.addEventListener('touchstart', startPress, { passive:true });
+    btn.addEventListener('touchend', cancelPress);
+    btn.addEventListener('touchmove', cancelPress);
+    btn.addEventListener('contextmenu', (e) => { if (tabDeleteMode || filterId !== '__all__') e.preventDefault(); });
+
+    btn.addEventListener('click', (e) => {
+      if (longPressFired){ longPressFired = false; return; } // long-press already handled this interaction
+      if (tabDeleteMode) return; // in delete mode, taps only work through the × handler below
+      logProjectFilter = filterId;
+      editingEntryId = null;
+      renderLog();
+    });
+  });
+
+  section.querySelectorAll('.tab-remove').forEach(x => {
+    x.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const projectId = x.dataset.projectId;
+      const project = DATA.projects.find(p => p.id === projectId);
+      if (!project) return;
+      const entryCount = DATA.entries.filter(en => en.project_id === projectId).length;
+      const countText = entryCount === 1 ? '1 entry' : `${entryCount} entries`;
+      const confirmed = confirm(
+        `Delete "${project.name}"? This won't delete your ${countText} — they'll be kept but marked as unassigned.`
+      );
+      if (!confirmed) return;
+
+      DATA.entries.forEach(en => {
+        if (en.project_id === projectId) en.project_id = null;
+      });
+      DATA.projects = DATA.projects.filter(p => p.id !== projectId);
+      if (logProjectFilter === projectId) logProjectFilter = '__all__';
+
+      await saveData(HANDLE, DATA);
+      renderLog();
+    });
+  });
 }
 
 function renderEditRow(e){
