@@ -556,16 +556,20 @@
   @media (prefers-reduced-motion: reduce){
     .project-tabs.delete-mode .project-tab{ animation:none; }
   }
+  .tabs-done-row{
+    margin-bottom:16px;
+  }
   .tabs-done-btn{
     font-family:var(--sans);
-    font-size:12.5px;
-    font-weight:600;
+    font-size:14px;
+    font-weight:700;
     background:none;
-    border:none;
-    color:var(--amber);
-    padding:8px 4px;
-    flex-shrink:0;
+    border:1px solid var(--pink);
+    color:var(--pink);
+    padding:9px 18px;
+    border-radius:20px;
   }
+  .tabs-done-btn:hover{ background:var(--pink); color:#1a0522; }
 
   /* ---------- Month switcher ---------- */
   .month-switcher{
@@ -581,12 +585,20 @@
     color:var(--text-dim);
     width:32px;
     height:32px;
+    min-width:32px;
+    min-height:32px;
+    max-width:32px;
+    max-height:32px;
+    padding:0;
+    margin:0;
     border-radius:50%;
     font-size:15px;
     line-height:1;
+    box-sizing:border-box;
     display:flex;
     align-items:center;
     justify-content:center;
+    flex-shrink:0;
   }
   .month-switcher button:hover:not(:disabled){ border-color:var(--pink); color:var(--pink); }
   .month-switcher button:disabled{ opacity:0.3; cursor:not-allowed; }
@@ -1517,8 +1529,8 @@ function renderLog(){
     </div>
     <div class="project-tabs" id="projectTabs">${tabsHTML}</div>
     ${tabDeleteMode ? `
-    <div class="tabs-done-row" style="text-align:right; margin-bottom:10px;">
-      <button class="tabs-done-btn" id="tabsDoneBtn" style="display:inline-block;">Done</button>
+    <div class="tabs-done-row">
+      <button class="tabs-done-btn" id="tabsDoneBtn">Done</button>
     </div>
     ` : ''}
     <div class="log-total-display" id="logTotalDisplay">
@@ -1821,6 +1833,19 @@ function escapeHTML(str){
   div.textContent = str;
   return div.innerHTML;
 }
+
+// Global tap-outside-to-exit for project tab delete mode.
+// Bound once, not per-render, so it doesn't stack up duplicate listeners.
+document.addEventListener('click', (e) => {
+  if (!tabDeleteMode) return;
+  const tabsEl = document.getElementById('projectTabs');
+  const doneBtn = document.getElementById('tabsDoneBtn');
+  const clickedInsideTabs = tabsEl && tabsEl.contains(e.target);
+  const clickedDoneBtn = doneBtn && doneBtn.contains(e.target);
+  if (clickedInsideTabs || clickedDoneBtn) return; // let their own handlers deal with it
+  tabDeleteMode = false;
+  renderLog();
+});
 
 init();
 </script>
